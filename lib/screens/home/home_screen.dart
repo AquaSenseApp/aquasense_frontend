@@ -25,11 +25,20 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.white),
             onPressed: () {
-              auth.signOut();
-              Navigator.of(context)
-                  .pushReplacementNamed(AppRoutes.onboarding);
-            },
-          ),
+              try {
+                auth.signOut();
+                if (context.mounted) {
+                  Navigator.of(context)
+                      .pushReplacementNamed(AppRoutes.onboarding);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to sign out')),
+                  );
+                }
+              }
+            },          ),
         ],
       ),
       body: const Center(

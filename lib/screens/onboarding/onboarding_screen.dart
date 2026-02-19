@@ -38,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => OnboardingProvider(),
+      create: (_) => OnboardingProvider(totalPages: onboardingPages.length),
       child: Consumer<OnboardingProvider>(
         builder: (context, provider, _) {
           final page = onboardingPages[provider.currentPage];

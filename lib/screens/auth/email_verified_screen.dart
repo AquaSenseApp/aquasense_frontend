@@ -58,7 +58,7 @@ class _EmailVerifiedScreenState extends State<EmailVerifiedScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _SuccessIcon(),
+                          const _SuccessIcon(),
                           const SizedBox(height: 28),
                           const Text(
                             'Successful',
@@ -97,6 +97,7 @@ class _EmailVerifiedScreenState extends State<EmailVerifiedScreen>
 }
 
 class _SuccessIcon extends StatelessWidget {
+  const _SuccessIcon();
   @override
   Widget build(BuildContext context) {
     return Container(
