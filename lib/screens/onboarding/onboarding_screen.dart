@@ -7,6 +7,9 @@ import '../../models/onboarding_model.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/onboarding_illustration.dart';
+// New imports for the extracted widgets
+import '../../widgets/common/app_logo.dart'; 
+import '../../widgets/common/app_skip_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -24,6 +27,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  void _handleSkip() {
+    Navigator.of(context).pushReplacementNamed(AppRoutes.createAccount);
+  }
+
   void _next(OnboardingProvider provider) {
     if (provider.canGoNext()) {
       _pageController.nextPage(
@@ -31,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.of(context).pushReplacementNamed(AppRoutes.createAccount);
+      _handleSkip();
     }
   }
 
@@ -49,11 +56,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             body: SafeArea(
               child: Column(
                 children: [
-                  const SizedBox(height: 16),
+                  // Extracted Skip Button
+                  SkipButton(onTap: _handleSkip),
+
                   const Expanded(
                     flex: 5,
                     child: OnboardingIllustration(),
                   ),
+
                   Expanded(
                     flex: 4,
                     child: PageView.builder(
@@ -66,7 +76,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 28),
                           child: Column(
                             children: [
-                              const SizedBox(height: 12),
                               Text(
                                 p.title,
                                 textAlign: TextAlign.center,
@@ -93,55 +102,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       },
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 20),
-                    child: Column(
-                      children: [
-                        SmoothPageIndicator(
-                          controller: _pageController,
-                          count: onboardingPages.length,
-                          effect: ExpandingDotsEffect(
-                            activeDotColor: AppColors.teal,
-                            dotColor: AppColors.borderColor,
-                            dotHeight: 8,
-                            dotWidth: 8,
-                            expansionFactor: 3,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        if (isLast) ...[
-                          AppButton(
-                            label: 'Get Started',
-                            onPressed: () => _next(provider),
-                          ),
-                          const SizedBox(height: 16),
-                          _signInLink(context),
-                        ] else
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _next(provider),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.cyan,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.chevron_right,
-                                    color: AppColors.textDark,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                  ),
+
+                  _buildBottomNavigation(provider, isLast),
                 ],
               ),
             ),
@@ -151,24 +113,60 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Widget _buildBottomNavigation(OnboardingProvider provider, bool isLast) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      child: isLast 
+        ? Column(
+            children: [
+              AppButton(
+                label: 'Get Started',
+                onPressed: () => _next(provider),
+              ),
+              const SizedBox(height: 16),
+              _signInLink(context),
+            ],
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SmoothPageIndicator(
+                controller: _pageController,
+                count: onboardingPages.length,
+                effect: ExpandingDotsEffect(
+                  activeDotColor: AppColors.teal,
+                  dotColor: AppColors.borderColor,
+                  dotHeight: 8,
+                  dotWidth: 8,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _next(provider),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: AppColors.cyan,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chevron_right, color: AppColors.textDark),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   Widget _signInLink(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          'Already have an account? ',
-          style: TextStyle(color: AppColors.textGrey, fontSize: 14),
-        ),
+        const Text('Already have an account? ', style: TextStyle(color: AppColors.textGrey, fontSize: 14)),
         GestureDetector(
-          onTap: () =>
-              Navigator.of(context).pushReplacementNamed(AppRoutes.signIn),
+          onTap: () => Navigator.of(context).pushReplacementNamed(AppRoutes.signIn),
           child: const Text(
             'Sign in',
-            style: TextStyle(
-              color: AppColors.teal,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: AppColors.teal, fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
       ],

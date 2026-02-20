@@ -16,9 +16,8 @@ class OnboardingProvider extends ChangeNotifier {
    
   }
 
-  bool canGoNext() {
-    return _currentPage < totalPages - 1;
-  }
+  bool canGoNext() =>  _currentPage < totalPages - 1;
+  
 
   void nextPage() {
     if (canGoNext()) {

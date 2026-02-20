@@ -20,12 +20,14 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1000),
     );
+    
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
+
     _controller.forward();
     _navigateAfterDelay();
   }
@@ -45,6 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: AppColors.teal,
       body: Center(
@@ -55,27 +58,54 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // The White Circle Logo
                 Container(
-                  width: 90,
-                  height: 90,
+                  width: 110,
+                  height: 110,
                   decoration: const BoxDecoration(
-                    color: AppColors.white,
+                    color:AppColors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.water_drop_outlined,
-                    color: AppColors.teal,
-                    size: 40,
+                  child: Center(
+                    child: SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: Stack(
+                        children: const [
+                          // Small Drop (Top Left)
+                          Positioned(
+                            top: 8,
+                            left: 4,
+                            child: Icon(
+                              Icons.water_drop_outlined,
+                              color: AppColors.teal,
+                              size: 24,
+                            ),
+                          ),
+                          // Large Drop (Bottom Right)
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
+                            child: Icon(
+                              Icons.water_drop_outlined,
+                              color: AppColors.teal,
+                              size: 44,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                // The "AquaSense" Text
                 const Text(
                   'AquaSense',
                   style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w500, // Medium weight for that clean look
+                    letterSpacing: -0.2, // Tighter letter spacing to match the UI
                   ),
                 ),
               ],
