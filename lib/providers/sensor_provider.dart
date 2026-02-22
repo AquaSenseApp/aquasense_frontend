@@ -37,7 +37,8 @@ class SensorProvider extends ChangeNotifier {
     try {
       _sensors   = await _repository.getSensors();
       _loadState = LoadState.loaded;
-    } catch (_) {
+    } catch (e, st) {
+      assert(() { debugPrint('loadSensors error: $e\n$st'); return true; }());
       _loadState    = LoadState.error;
       _errorMessage = 'Failed to load sensors. Please try again.';
     }
@@ -97,7 +98,7 @@ class SensorProvider extends ChangeNotifier {
         name:              form.name.isNotEmpty ? form.name : original.name,
         location:          form.location.isNotEmpty ? form.location : original.location,
         safeRange:         form.safeRange,
-        alertThreshold:    form.alertThreshold != null ? Nullable(form.alertThreshold!) : Nullable(null),
+        alertThreshold:    form.alertThreshold,
         aiAdvisoryEnabled: form.aiAdvisoryEnabled,
         sensitivityLevel:  form.sensitivityLevel,
       );
@@ -167,12 +168,14 @@ class SensorProvider extends ChangeNotifier {
       _addingLoading = false;
       notifyListeners();
       return sensor;
-    } catch (_) {
+    } catch (e, st) {
+      assert(() { debugPrint('loadSensors error: $e\n$st'); return true; }());
       _addingLoading = false;
       _errorMessage  = 'Failed to add sensor. Please try again.';
       notifyListeners();
       return null;
-    }
+}
+   
   }
 }
 

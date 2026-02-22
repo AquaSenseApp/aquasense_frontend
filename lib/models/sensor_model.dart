@@ -197,7 +197,7 @@ class SensorModel {
     DataSourceType? dataSource,
     RiskSensitivityLevel? sensitivityLevel,
     String? safeRange,
-    Nullable<AlertThreshold>? alertThreshold,
+    AlertThreshold? alertThreshold,
     bool clearAlertThreshold = false,
   }) {
     return SensorModel(
@@ -214,7 +214,8 @@ class SensorModel {
       dataSource:        dataSource       ?? this.dataSource,
       sensitivityLevel:  sensitivityLevel ?? this.sensitivityLevel,
       safeRange:         safeRange        ?? this.safeRange,
-      alertThreshold:    clearAlertThreshold ? null : (alertThreshold?.value ?? this.alertThreshold),
+      alertThreshold: clearAlertThreshold ? null : (alertThreshold ?? this.alertThreshold),
+  
     );
   }
 }

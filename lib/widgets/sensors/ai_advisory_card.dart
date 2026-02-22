@@ -108,6 +108,7 @@ class _AdvisoryRow extends StatelessWidget {
             style: tt.bodySmall?.copyWith(
               fontWeight: FontWeight.w700,
               color:      AppColors.textDark,
+         
             ),
           ),
         ),

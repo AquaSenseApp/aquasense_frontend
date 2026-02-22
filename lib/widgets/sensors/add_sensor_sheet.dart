@@ -197,10 +197,15 @@ class _SheetFooter extends StatelessWidget {
     final sensor = await provider.submitSensor();
     if (context.mounted) {
       Navigator.of(context).pop();
-      if (sensor != null) _showSuccessSheet(context, sensor);
+      if (sensor != null) {
+        _showSuccessSheet(context, sensor);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to add sensor. Please try again.')),
+        );
+      }
     }
-  }
-}
+  }}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Success bottom sheet
@@ -526,23 +531,28 @@ class _AiAdvisoryToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onChanged != null ? () => onChanged!(!value) : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color:        AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: AppColors.borderColor),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Enable AI Advisory', style: Theme.of(context).textTheme.bodyLarge),
-            _TealCheckbox(checked: value),
-          ],
-        ),
+     return Semantics(
+        label: 'Enable AI Advisory',
+        checked: value,
+        enabled: onChanged != null,
+      child:GestureDetector(
+        onTap: onChanged != null ? () => onChanged!(!value) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color:        AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border:       Border.all(color: AppColors.borderColor),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Enable AI Advisory', style: Theme.of(context).textTheme.bodyLarge),
+              _TealCheckbox(checked: value),
+            ],
+          ),
       ),
+    ),
     );
   }
 }
