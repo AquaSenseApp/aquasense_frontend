@@ -10,5 +10,6 @@ class AppRoutes {
   static const forgotPassword = '/forgot-password';
   static const home = '/home';
   static const sensorDetail   = '/sensor-detail';
-  static const aiAdvisory     = '/ai-advisory';
+  static const aiAdvisory     = '/ai-advisory';   // static advisory (no chat)
+  static const aiChat         = '/ai-chat'; 
 }
