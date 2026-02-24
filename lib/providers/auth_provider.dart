@@ -102,8 +102,9 @@ class AuthProvider extends ChangeNotifier {
 
       // Store pending user; OTP required before full session is written
       _pendingEmail = email.trim();
+      // Note: OTP should be generated server-side and sent via email/SMS
+      // Client-side OTP generation is only for demo purposes
       _pendingOtp   = _generateOtp();
-      debugPrint('AquaSense OTP [${user.email}]: $_pendingOtp');
 
       final draft = user.copyWith(isEmailVerified: false);
       final prefs = await SharedPreferences.getInstance();
@@ -200,8 +201,8 @@ class AuthProvider extends ChangeNotifier {
   // ── Resend OTP ──────────────────────────────────────────────────────────
 
   Future<void> resendOtp() async {
+    // Note: OTP should be generated server-side and sent via email/SMS
     _pendingOtp = _generateOtp();
-    debugPrint('AquaSense new OTP [${_pendingEmail}]: $_pendingOtp');
     notifyListeners();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/sensor_provider.dart';
 import '../../widgets/home/ai_assistant_banner.dart';
 import '../../widgets/home/search_bar_widget.dart';
@@ -31,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final auth = context.watch<AuthProvider>();
+    final userName = auth.user?.fullName ?? auth.user?.username ?? 'User';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Welcome Meggie 👋', style: tt.headlineMedium),
+                              Text('Welcome $userName 👋', style: tt.headlineMedium),
                               // Notification bell with red dot badge
                               Stack(
                                 children: [

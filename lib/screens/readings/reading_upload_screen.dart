@@ -22,7 +22,13 @@ class ReadingUploadScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sensor = ModalRoute.of(context)!.settings.arguments as SensorModel;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is! SensorModel) {
+      return const Scaffold(
+        body: Center(child: Text('Invalid sensor data')),
+      );
+    }
+    final sensor = args;
     return ChangeNotifierProvider(
       create: (_) => ReadingProvider(),
       child:  _ReadingUploadView(sensor: sensor),

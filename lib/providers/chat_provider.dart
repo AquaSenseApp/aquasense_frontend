@@ -22,7 +22,7 @@ class ChatProvider extends ChangeNotifier {
   void _seedOpeningMessage() {
     _messages.add(ChatMessage(
       id:   'm0',
-      text: 'Hey Meggie! How may I help you today?',
+      text: 'Hello! How may I help you with sensor ${_sensor.name} today?',
       role: ChatRole.assistant,
     ));
   }

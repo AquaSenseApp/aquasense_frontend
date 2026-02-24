@@ -32,6 +32,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String _organizationType      = '';
   bool   _agreedToTerms         = false;
 
+  /// Track if fields have been touched for validation display
+  bool _usernameTouched  = false;
+  bool _fullNameTouched  = false;
+  bool _emailTouched     = false;
+  bool _passwordTouched  = false;
+
   /// Organisation type options matching the backend enum expectation.
   static const _orgTypes = [
     'School',
@@ -42,14 +48,58 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     'Other',
   ];
 
-  /// Primary CTA enabled only when all required fields are filled + terms accepted.
+  // ── Validation helpers ────────────────────────────────────────────────────
+
+  static final _emailRegex = RegExp(r'^[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-zA-Z]{2,}$');
+
+  String? get _usernameError {
+    if (!_usernameTouched) return null;
+    final v = _usernameController.text.trim();
+    if (v.isEmpty) return 'Username is required';
+    if (v.length < 3) return 'Username must be at least 3 characters';
+    if (v.length > 20) return 'Username must be less than 20 characters';
+    return null;
+  }
+
+  String? get _fullNameError {
+    if (!_fullNameTouched) return null;
+    final v = _fullNameController.text.trim();
+    if (v.isEmpty) return 'Full name is required';
+    if (v.length < 2) return 'Full name must be at least 2 characters';
+    return null;
+  }
+
+  String? get _emailError {
+    if (!_emailTouched) return null;
+    final v = _emailController.text.trim();
+    if (v.isEmpty) return 'Email is required';
+    if (!_emailRegex.hasMatch(v)) return 'Enter a valid email address';
+    return null;
+  }
+
+  String? get _passwordError {
+    if (!_passwordTouched) return null;
+    final v = _passwordController.text;
+    if (v.isEmpty) return 'Password is required';
+    if (v.length < 8) return 'Password must be at least 8 characters';
+    if (!v.contains(RegExp(r'[A-Z]'))) return 'Password must contain an uppercase letter';
+    if (!v.contains(RegExp(r'[a-z]'))) return 'Password must contain a lowercase letter';
+    if (!v.contains(RegExp(r'[0-9]'))) return 'Password must contain a number';
+    return null;
+  }
+
+  /// Primary CTA enabled only when all required fields are filled + terms accepted + valid.
   bool get _canSubmit =>
       _usernameController.text.isNotEmpty    &&
       _fullNameController.text.isNotEmpty    &&
       _emailController.text.isNotEmpty       &&
       _passwordController.text.isNotEmpty    &&
       _organizationType.isNotEmpty           &&
-      _agreedToTerms;
+      _agreedToTerms                         &&
+      _usernameError == null                 &&
+      _fullNameError == null                 &&
+      _emailError == null                    &&
+      _passwordError == null;
 
   @override
   void dispose() {
@@ -64,6 +114,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   /// Calls [AuthProvider.createAccount] then navigates to OTP verification.
   Future<void> _submit(AuthProvider auth) async {
+    // Mark all fields as touched to show validation errors
+    setState(() {
+      _usernameTouched = true;
+      _fullNameTouched = true;
+      _emailTouched    = true;
+      _passwordTouched = true;
+    });
+
     if (!_canSubmit) return;
     final success = await auth.createAccount(
       username:         _usernameController.text.trim(),
@@ -115,8 +173,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   AppTextField(
                     hint:       'e.g. JohnDoe99',
                     controller: _usernameController,
-                    onChanged:  (_) => setState(() {}),
+                    onChanged:  (_) { if (!_usernameTouched) setState(() => _usernameTouched = true); },
                   ),
+                  if (_usernameError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_usernameError!, style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg)),
+                    ),
                   const SizedBox(height: 16),
 
                   // ── Full Name ─────────────────────────────────────────
@@ -125,8 +188,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   AppTextField(
                     hint:       'e.g. John Doe',
                     controller: _fullNameController,
-                    onChanged:  (_) => setState(() {}),
+                    onChanged:  (_) { if (!_fullNameTouched) setState(() => _fullNameTouched = true); },
                   ),
+                  if (_fullNameError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_fullNameError!, style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg)),
+                    ),
                   const SizedBox(height: 16),
 
                   // ── Email ─────────────────────────────────────────────
@@ -136,8 +204,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     hint:         'Enter your email',
                     controller:   _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    onChanged:    (_) => setState(() {}),
+                    onChanged:    (_) { if (!_emailTouched) setState(() => _emailTouched = true); },
                   ),
+                  if (_emailError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_emailError!, style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg)),
+                    ),
                   const SizedBox(height: 16),
 
                   // ── Password ──────────────────────────────────────────
@@ -147,8 +220,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     hint:       '••••••••',
                     controller: _passwordController,
                     isPassword: true,
-                    onChanged:  (_) => setState(() {}),
+                    onChanged:  (_) { if (!_passwordTouched) setState(() => _passwordTouched = true); },
                   ),
+                  if (_passwordError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_passwordError!, style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg)),
+                    ),
                   const SizedBox(height: 16),
 
                   // ── Organisation Type ─────────────────────────────────

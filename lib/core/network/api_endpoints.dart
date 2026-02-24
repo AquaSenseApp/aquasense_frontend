@@ -7,8 +7,10 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   /// Base URL of the AquaSense backend.
-  /// Change this once to point to staging / production.
-  static const baseUrl = 'http://localhost:5000';
+  /// IMPORTANT: Use HTTPS in production for secure communication.
+  /// For local development, you may use http://localhost:5000
+  /// but never deploy with HTTP to production.
+  static const baseUrl = 'https://api.aquasense.com';
 
   // ── Auth ────────────────────────────────────────────────────────────────
   static const login    = '/api/users/login';
