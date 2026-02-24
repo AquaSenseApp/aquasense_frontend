@@ -18,7 +18,8 @@ class OnboardingPage {
 /// Page 4 (isLast = true) shows the AquaSense logo landing view.
 final List<OnboardingPage> onboardingPages = [
   const OnboardingPage(
-    title: 'Make sense of your\nwastewater data instantly',    description:
+    title: 'Make sense of your waste\nwater data instantly',
+    description:
         'Transform complex sensor readings into clear insights, risk levels, and recommended actions you can act on immediately.',
   ),
   const OnboardingPage(
@@ -34,6 +35,7 @@ final List<OnboardingPage> onboardingPages = [
   const OnboardingPage(
     title: 'AquaSense',
     description:
-        'Transform your wastewater data into clear insights, risk alerts, and AI recommendations',    isLast: true,
+        'Transfer your wastewater data into clear insights, risk alerts, and Ai recommendation',
+    isLast: true,
   ),
 ];

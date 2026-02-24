@@ -1,19 +1,35 @@
 import 'package:flutter/material.dart';
+import '../core/errors/api_exception.dart';
 import '../models/sensor_model.dart';
-import '../repositories/sensor_repository.dart';
+import '../models/user_model.dart';
+import '../services/sensor_service.dart';
 
 /// Possible states for any async data load.
 enum LoadState { initial, loading, loaded, error }
 
+/// Identifies which screen owns a search query.
+enum SensorSearchScope { home, sensors }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SensorProvider
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// Central state manager for sensors, search, wizard, and editing.
 ///
-/// Search is scoped per-screen via [SensorSearchScope] rather than
-/// a single shared query — so typing in the Home search doesn't
-/// affect the Sensors tab list and vice versa.
+/// Fetches from GET /api/sensors/user/{userId} via [SensorService].
+/// Converts [ApiSensorDto] → [SensorModel] with sensible defaults for
+/// fields the backend doesn't yet return (advisory, reading, riskLevel).
 class SensorProvider extends ChangeNotifier {
-  final SensorRepository _repository;
+  SensorProvider(UserModel? user) : _user = user;
 
-  SensorProvider(this._repository);
+  UserModel? _user;
+
+  /// Called by ProxyProvider when auth state changes (login / logout).
+  void updateUser(UserModel? user) {
+    if (_user?.userId == user?.userId) return; // no change
+    _user = user;
+    if (user != null) loadSensors();
+  }
 
   // ── Sensor list ───────────────────────────────────────────────────────────
 
@@ -26,44 +42,67 @@ class SensorProvider extends ChangeNotifier {
   String?           get errorMessage => _errorMessage;
   bool              get isLoading    => _loadState == LoadState.loading;
 
-  /// Up to [count] most recent sensors — used by HomeScreen summary.
   List<SensorModel> recentSensors({int count = 3}) =>
       _sensors.take(count).toList();
 
+  /// Fetches sensors for the authenticated user from the real API.
   Future<void> loadSensors() async {
+    final userId = _user?.userId;
+    if (userId == null) return;
+
     _loadState    = LoadState.loading;
     _errorMessage = null;
     notifyListeners();
     try {
-      _sensors   = await _repository.getSensors();
+      final dtos = await SensorService.instance.getSensorsForUser(userId);
+      _sensors   = dtos.map(_dtoToModel).toList();
       _loadState = LoadState.loaded;
-    } catch (e, st) {
-      assert(() { debugPrint('loadSensors error: $e\n$st'); return true; }());
+    } on ApiException catch (e) {
       _loadState    = LoadState.error;
-      _errorMessage = 'Failed to load sensors. Please try again.';
+      _errorMessage = e.displayMessage;
     }
     notifyListeners();
   }
 
+  /// Converts an API DTO to the rich UI [SensorModel].
+  SensorModel _dtoToModel(ApiSensorDto dto) {
+    return SensorModel(
+      id:     dto.id.toString(),
+      apiId:  dto.id,
+      apiKey: dto.apiKey,
+      name:   dto.name,
+      location: dto.location,
+      parameter: dto.parameterType,
+      riskLevel: RiskLevel.medium, // default until analytics returns data
+      latestReading: SensorReading(
+        value:     0,
+        parameter: dto.parameterType,
+        trend:     TrendDirection.stable,
+        timestamp: DateTime.now(),
+      ),
+      advisory: const AiAdvisory(
+        headline:           'Awaiting first reading',
+        impactExplanation:  'Upload a reading to generate an advisory.',
+        recommendedActions: ['Upload sensor data to begin monitoring.'],
+        impactNotes:        '',
+      ),
+    );
+  }
+
   // ── Per-screen search ─────────────────────────────────────────────────────
 
-  /// Independent search query per screen scope.
-  /// Keyed by [SensorSearchScope] so Home and Sensors never share state.
   final Map<SensorSearchScope, String> _queries = {};
 
-  /// Update the search query for a given [scope].
   void setSearchQuery(String query, {required SensorSearchScope scope}) {
     _queries[scope] = query.toLowerCase();
     notifyListeners();
   }
 
-  /// Clear the search query for a given [scope].
   void clearSearch({required SensorSearchScope scope}) {
     _queries.remove(scope);
     notifyListeners();
   }
 
-  /// Sensors filtered by the query active in [scope].
   List<SensorModel> filteredSensors({required SensorSearchScope scope}) {
     final q = _queries[scope] ?? '';
     if (q.isEmpty) return _sensors;
@@ -75,57 +114,111 @@ class SensorProvider extends ChangeNotifier {
     ).toList();
   }
 
-  /// Recent sensors optionally filtered by Home scope query.
-  List<SensorModel> filteredRecentSensors({int count = 3}) {
-    return filteredSensors(scope: SensorSearchScope.home).take(count).toList();
+  List<SensorModel> filteredRecentSensors({int count = 3}) =>
+      filteredSensors(scope: SensorSearchScope.home).take(count).toList();
+
+  // ── Register sensor via API ───────────────────────────────────────────────
+
+  bool _registerLoading = false;
+  bool get registerLoading => _registerLoading;
+
+  /// Calls POST /api/sensors/register then appends the new sensor to the list.
+  Future<SensorModel?> registerSensor({
+    required String sensorName,
+    required String sensorType,
+    required String location,
+  }) async {
+    final userId = _user?.userId;
+    if (userId == null) return null;
+
+    _registerLoading = true;
+    notifyListeners();
+    try {
+      final result = await SensorService.instance.registerSensor(
+        sensorName: sensorName,
+        sensorType: sensorType,
+        location:   location,
+        userId:     userId,
+      );
+
+      final newSensor = SensorModel(
+        id:       result.sensorId.toString(),
+        apiId:    result.sensorId,
+        apiKey:   result.apiKey,
+        name:     sensorName,
+        location: location,
+        parameter: _typeToParam(sensorType),
+        riskLevel: RiskLevel.medium,
+        latestReading: SensorReading(
+          value:     0,
+          parameter: _typeToParam(sensorType),
+          trend:     TrendDirection.stable,
+          timestamp: DateTime.now(),
+        ),
+        advisory: const AiAdvisory(
+          headline:           'Awaiting first reading',
+          impactExplanation:  'Upload a reading to generate an advisory.',
+          recommendedActions: ['Upload sensor data to begin monitoring.'],
+          impactNotes:        '',
+        ),
+      );
+
+      _sensors = [..._sensors, newSensor];
+      _registerLoading = false;
+      notifyListeners();
+      return newSensor;
+    } on ApiException catch (e) {
+      _errorMessage    = e.displayMessage;
+      _registerLoading = false;
+      notifyListeners();
+      return null;
+    }
   }
 
-  // ── Edit sensor ───────────────────────────────────────────────────────────
+  ParameterType _typeToParam(String type) {
+    final t = type.toLowerCase();
+    if (t.contains('ph'))       return ParameterType.pH;
+    if (t.contains('turbid'))   return ParameterType.turbidity;
+    if (t.contains('oxygen'))   return ParameterType.dissolvedOxygen;
+    if (t.contains('temp'))     return ParameterType.temperature;
+    if (t.contains('conduct'))  return ParameterType.conductivity;
+    return ParameterType.other;
+  }
+
+  // ── Edit sensor (local update) ────────────────────────────────────────────
 
   bool _editLoading = false;
   bool get editLoading => _editLoading;
 
-  /// Updates a sensor in-place and notifies listeners.
-  /// In a real app this would call `_repository.updateSensor(form)`.
   Future<bool> updateSensor(SensorModel original, EditSensorForm form) async {
     _editLoading = true;
     notifyListeners();
+    await Future.delayed(const Duration(milliseconds: 600));
 
-    try {
-      await Future.delayed(const Duration(milliseconds: 800)); // simulate API
+    final updated = original.copyWith(
+      name:              form.name.isNotEmpty ? form.name : original.name,
+      location:          form.location.isNotEmpty ? form.location : original.location,
+      safeRange:         form.safeRange,
+      alertThreshold:    form.alertThreshold,
+      aiAdvisoryEnabled: form.aiAdvisoryEnabled,
+      sensitivityLevel:  form.sensitivityLevel,
+    );
 
-      final updated = original.copyWith(
-        name:              form.name.isNotEmpty ? form.name : original.name,
-        location:          form.location.isNotEmpty ? form.location : original.location,
-        safeRange:         form.safeRange,
-        alertThreshold:    form.alertThreshold,
-        aiAdvisoryEnabled: form.aiAdvisoryEnabled,
-        sensitivityLevel:  form.sensitivityLevel,
-      );
+    final idx = _sensors.indexWhere((s) => s.id == original.id);
+    if (idx >= 0) _sensors = List.of(_sensors)..[idx] = updated;
 
-      final idx = _sensors.indexWhere((s) => s.id == original.id);
-      if (idx >= 0) {
-        _sensors = List.of(_sensors)..[idx] = updated;
-      }
-
-      _editLoading = false;
-      notifyListeners();
-      return true;
-    } catch (_) {
-      _editLoading  = false;
-      _errorMessage = 'Failed to update sensor.';
-      notifyListeners();
-      return false;
-    }
+    _editLoading = false;
+    notifyListeners();
+    return true;
   }
 
-  // ── Add Sensor wizard ─────────────────────────────────────────────────────
+  // ── Add Sensor wizard (kept for sheet UI compatibility) ───────────────────
 
   static const int totalWizardSteps = 5;
   static const int lastWizardStep   = totalWizardSteps - 1;
 
-  AddSensorForm _form        = AddSensorForm();
-  int           _wizardStep  = 0;
+  AddSensorForm _form         = AddSensorForm();
+  int           _wizardStep   = 0;
   bool          _addingLoading = false;
 
   AddSensorForm get form          => _form;
@@ -136,18 +229,15 @@ class SensorProvider extends ChangeNotifier {
   void nextWizardStep() {
     if (_wizardStep < lastWizardStep) { _wizardStep++; notifyListeners(); }
   }
-
   void prevWizardStep() {
     if (_wizardStep > 0) { _wizardStep--; notifyListeners(); }
   }
-
   void resetWizard() {
-    _form          = AddSensorForm();
-    _wizardStep    = 0;
+    _form        = AddSensorForm();
+    _wizardStep  = 0;
     _addingLoading = false;
     notifyListeners();
   }
-
   void updateForm() => notifyListeners();
 
   bool get canAdvance {
@@ -158,37 +248,27 @@ class SensorProvider extends ChangeNotifier {
     }
   }
 
+  /// On the final wizard step, calls the real API to register the sensor.
   Future<SensorModel?> submitSensor() async {
     _addingLoading = true;
     notifyListeners();
-    try {
-      final sensor   = await _repository.addSensor(_form);
-      _sensors       = [..._sensors, sensor];
-      _loadState     = LoadState.loaded;
-      _addingLoading = false;
-      notifyListeners();
-      return sensor;
-    } catch (e, st) {
-      assert(() { debugPrint('submitSensor error: $e\n$st'); return true; }());
-      _addingLoading = false;
-      _errorMessage  = 'Failed to add sensor. Please try again.';
-      notifyListeners();
-      return null;
-    }
-   } 
-    }
 
+    final sensor = await registerSensor(
+      sensorName: _form.sensorName,
+      sensorType: _form.parameterType?.label ?? 'Other',
+      location:   '${_form.specificLocation}, ${_form.site}',
+    );
+
+    _addingLoading = false;
+    notifyListeners();
+    return sensor;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Supporting types
+// EditSensorForm
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Identifies which screen owns a search query.
-/// Prevents Home and Sensors search from interfering with each other.
-enum SensorSearchScope { home, sensors }
-
-/// Mutable form data for the Edit Sensor sheet.
-/// Pre-filled from an existing [SensorModel].
 class EditSensorForm {
   String name;
   String location;
@@ -206,7 +286,6 @@ class EditSensorForm {
     required this.sensitivityLevel,
   });
 
-  /// Factory that pre-fills the form from an existing sensor.
   factory EditSensorForm.fromSensor(SensorModel sensor) => EditSensorForm(
     name:              sensor.name,
     location:          sensor.location,

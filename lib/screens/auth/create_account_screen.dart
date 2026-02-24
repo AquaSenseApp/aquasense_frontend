@@ -12,14 +12,11 @@ import '../../widgets/common/app_text_field.dart';
 
 /// Create Account screen.
 ///
-/// Layout (top → bottom):
-///   • [AuthHeader]           — back button, logo, title, subtitle
-///   • Email / Password / Confirm Password fields with [FieldLabel]s
-///   • Inline validation error messages per field
-///   • [_TermsCheckbox]       — "I agree to terms of service and privacy policy"
-///   • "Create Account" primary button
-///   • [GoogleSignInButton]   — "Sign up with Google"
-///   • [AuthFooterLink]       — "Already have an account? Sign in"
+/// Collects all fields required by POST /api/users/register:
+///   username, full_name, email, password, organization_type
+///
+/// On submit → [AuthProvider.createAccount] calls the real API,
+/// then this screen pushes [AppRoutes.emailVerification] for OTP entry.
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
 
@@ -28,87 +25,58 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final _emailController           = TextEditingController();
-  final _passwordController        = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _usernameController     = TextEditingController();
+  final _fullNameController     = TextEditingController();
+  final _emailController        = TextEditingController();
+  final _passwordController     = TextEditingController();
+  String _organizationType      = '';
+  bool   _agreedToTerms         = false;
 
-  bool _agreedToTerms = false;
+  /// Organisation type options matching the backend enum expectation.
+  static const _orgTypes = [
+    'School',
+    'Company',
+    'NGO',
+    'Government',
+    'Hospital',
+    'Other',
+  ];
 
-  /// Whether the user has touched each field (used to show errors only after
-  /// the user has interacted with a field, not on first render).
-  bool _emailTouched           = false;
-  bool _passwordTouched        = false;
-  bool _confirmPasswordTouched = false;
-
-  // ── Validation helpers ────────────────────────────────────────────────────
-
-  static final _emailRegex = RegExp(r'^[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-zA-Z]{2,}$');
-
-  String? get _emailError {
-    if (!_emailTouched) return null;
-    final v = _emailController.text.trim();
-    if (v.isEmpty) return 'Email is required';
-    if (!_emailRegex.hasMatch(v)) return 'Enter a valid email address';
-    return null;
-  }
-
-  String? get _passwordError {
-    if (!_passwordTouched) return null;
-    final v = _passwordController.text;
-    if (v.isEmpty) return 'Password is required';
-    if (v.length < 6) return 'Password must be at least 6 characters';
-    return null;
-  }
-
-  String? get _confirmPasswordError {
-    if (!_confirmPasswordTouched) return null;
-    final v = _confirmPasswordController.text;
-    if (v.isEmpty) return 'Please confirm your password';
-    if (v != _passwordController.text) return 'Passwords do not match';
-    return null;
-  }
-
-  bool get _formValid =>
-      _emailError == null &&
-      _passwordError == null &&
-      _confirmPasswordError == null &&
-      _emailController.text.isNotEmpty &&
-      _passwordController.text.isNotEmpty &&
-      _confirmPasswordController.text.isNotEmpty;
-
-  /// Primary CTA enabled only when form is valid + terms accepted.
-  bool get _canSubmit => _formValid && _agreedToTerms;
+  /// Primary CTA enabled only when all required fields are filled + terms accepted.
+  bool get _canSubmit =>
+      _usernameController.text.isNotEmpty    &&
+      _fullNameController.text.isNotEmpty    &&
+      _emailController.text.isNotEmpty       &&
+      _passwordController.text.isNotEmpty    &&
+      _organizationType.isNotEmpty           &&
+      _agreedToTerms;
 
   @override
   void dispose() {
+    _usernameController.dispose();
+    _fullNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
+  /// Calls [AuthProvider.createAccount] then navigates to OTP verification.
   Future<void> _submit(AuthProvider auth) async {
-    // Mark all fields as touched to surface any remaining errors
-    setState(() {
-      _emailTouched           = true;
-      _passwordTouched        = true;
-      _confirmPasswordTouched = true;
-    });
-
     if (!_canSubmit) return;
-
     final success = await auth.createAccount(
-      email:    _emailController.text.trim(),
-      password: _passwordController.text,
+      username:         _usernameController.text.trim(),
+      fullName:         _fullNameController.text.trim(),
+      email:            _emailController.text.trim(),
+      password:         _passwordController.text,
+      organizationType: _organizationType,
     );
     if (success && mounted) {
       Navigator.of(context).pushNamed(AppRoutes.emailVerification);
     }
   }
 
-  /// Placeholder — wire up google_sign_in package when ready.
   void _signUpWithGoogle() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Google sign-up coming soon')),
@@ -119,6 +87,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         return Scaffold(
@@ -131,83 +101,84 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 children: [
                   const SizedBox(height: 16),
 
-                  // ── Logo + title block ───────────────────────────────
+                  // ── Logo + title ─────────────────────────────────────
                   AuthHeader(
-                    title: 'Create Account',
+                    title:    'Create Account',
                     subtitle: 'Sign up to get started on the platform',
-                    onBack: () {
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      } else {
-                        Navigator.of(context)
-                            .pushReplacementNamed(AppRoutes.onboarding);
-                      }
-                    },
+                    onBack:   () => Navigator.of(context).pop(),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-                  // ── Email ────────────────────────────────────────────
+                  // ── Username ──────────────────────────────────────────
+                  const FieldLabel('Username'),
+                  const SizedBox(height: 8),
+                  AppTextField(
+                    hint:       'e.g. JohnDoe99',
+                    controller: _usernameController,
+                    onChanged:  (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Full Name ─────────────────────────────────────────
+                  const FieldLabel('Full Name'),
+                  const SizedBox(height: 8),
+                  AppTextField(
+                    hint:       'e.g. John Doe',
+                    controller: _fullNameController,
+                    onChanged:  (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Email ─────────────────────────────────────────────
                   const FieldLabel('Email'),
                   const SizedBox(height: 8),
                   AppTextField(
                     hint:         'Enter your email',
                     controller:   _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    onChanged: (_) => setState(() => _emailTouched = true),
+                    onChanged:    (_) => setState(() {}),
                   ),
-                  _FieldError(message: _emailError),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                  // ── Password ─────────────────────────────────────────
+                  // ── Password ──────────────────────────────────────────
                   const FieldLabel('Password'),
                   const SizedBox(height: 8),
                   AppTextField(
                     hint:       '••••••••',
                     controller: _passwordController,
                     isPassword: true,
-                    onChanged: (_) => setState(() {
-                      _passwordTouched = true;
-                      // Re-validate confirm field live when password changes
-                      // if (_confirmPasswordTouched) {}
-                    }),
+                    onChanged:  (_) => setState(() {}),
                   ),
-                  _FieldError(message: _passwordError),
-                  const SizedBox(height: 18),
-
-                  // ── Confirm Password ─────────────────────────────────
-                  const FieldLabel('Confirm Password'),
-                  const SizedBox(height: 8),
-                  AppTextField(
-                    hint:       '••••••••',
-                    controller: _confirmPasswordController,
-                    isPassword: true,
-                    onChanged: (_) =>
-                        setState(() => _confirmPasswordTouched = true),
-                  ),
-                  _FieldError(message: _confirmPasswordError),
                   const SizedBox(height: 16),
 
-                  // ── Terms checkbox ───────────────────────────────────
+                  // ── Organisation Type ─────────────────────────────────
+                  const FieldLabel('Organisation Type'),
+                  const SizedBox(height: 8),
+                  _OrgTypeDropdown(
+                    value:     _organizationType,
+                    items:     _orgTypes,
+                    onChanged: (v) => setState(() => _organizationType = v ?? ''),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Terms checkbox ────────────────────────────────────
                   _TermsCheckbox(
                     value:     _agreedToTerms,
-                    onChanged: (val) => setState(() => _agreedToTerms = val),
+                    onChanged: (v) => setState(() => _agreedToTerms = v),
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Provider-level error (e.g. email already in use) ─
-                  if (auth.errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        auth.errorMessage!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.riskHighFg,
-                        ),
-                      ),
+                  // ── Error message ─────────────────────────────────────
+                  if (auth.errorMessage != null) ...[
+                    Text(
+                      auth.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg),
                     ),
+                    const SizedBox(height: 12),
+                  ],
 
-                  // ── Primary CTA ──────────────────────────────────────
+                  // ── Primary CTA ───────────────────────────────────────
                   AppButton(
                     label:     'Create Account',
                     enabled:   _canSubmit,
@@ -216,21 +187,19 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // ── Google sign-up ───────────────────────────────────
+                  // ── Google sign-up ────────────────────────────────────
                   GoogleSignInButton(
                     label: 'Sign up with Google',
                     onTap: _signUpWithGoogle,
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Sign-in link ─────────────────────────────────────
+                  // ── Sign-in link ──────────────────────────────────────
                   AuthFooterLink(
                     prefixText: 'Already have an account?  ',
                     linkText:   'Sign in',
-                    onTap: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                      AppRoutes.signIn,
-                      ModalRoute.withName(AppRoutes.onboarding),
-                    ),
+                    onTap: () => Navigator.of(context)
+                        .pushReplacementNamed(AppRoutes.signIn),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -247,61 +216,63 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 // Private sub-widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Displays an inline validation error below a field.
-/// Renders nothing when [message] is null, so spacing stays consistent.
-class _FieldError extends StatelessWidget {
-  final String? message;
-  const _FieldError({required this.message});
+/// Dropdown for organisation type — inherits theme decoration.
+class _OrgTypeDropdown extends StatelessWidget {
+  final String            value;
+  final List<String>      items;
+  final ValueChanged<String?> onChanged;
+
+  const _OrgTypeDropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 24, // Reserve consistent height
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (message != null) ...[
-            const Icon(Icons.error_outline, size: 14, color: AppColors.riskHighFg),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                message!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.riskHighFg,
-                ),
-              ),
-            ),
-          ],
-        ],
+    final tt = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color:        AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border:       Border.all(color: AppColors.borderColor),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value:      value.isEmpty ? null : value,
+          hint:       Text('Select Organisation Type', style: tt.bodyMedium),
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textGrey),
+          items: items.map((t) => DropdownMenuItem(
+            value: t,
+            child: Text(t, style: tt.bodyLarge),
+          )).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
-  } 
-   }
+  }
+}
 
-
-/// "I agree to the terms of service and privacy policy" checkbox row.
-/// Only used on Create Account so kept private to this file.
+/// "I agree to terms of service and privacy policy" checkbox row.
 class _TermsCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
-
   const _TermsCheckbox({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Custom teal checkbox
           Container(
-            width: 18,
-            height: 18,
+            width: 18, height: 18, margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
-              color: value
-                  ? AppColors.teal.withValues(alpha: 0.12)
-                  : AppColors.white,
+              color:  value ? AppColors.teal.withValues(alpha: 0.12) : AppColors.white,
               border: Border.all(
                 color: value ? AppColors.teal : AppColors.borderColor,
                 width: 1.5,
@@ -313,29 +284,27 @@ class _TermsCheckbox extends StatelessWidget {
                 : null,
           ),
           const SizedBox(width: 10),
-
-          // "I agree to the terms of service and privacy policy"
-          Text.rich(
-            TextSpan(
-              text: 'I agree to the ',
-              style: const TextStyle(fontSize: 13, color: AppColors.textGrey),
-              children: [
-                TextSpan(
-                  text: 'terms of service',
-                  style: const TextStyle(
-                    color:      AppColors.teal,
-                    fontWeight: FontWeight.w500,
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                text:  'I agree to the ',
+                style: tt.bodySmall,
+                children: [
+                  TextSpan(
+                    text:  'terms of service',
+                    style: tt.bodySmall?.copyWith(
+                      color: AppColors.teal, fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'privacy policy',
-                  style: const TextStyle(
-                    color:      AppColors.teal,
-                    fontWeight: FontWeight.w500,
+                  TextSpan(text: ' and ', style: tt.bodySmall),
+                  TextSpan(
+                    text:  'privacy policy',
+                    style: tt.bodySmall?.copyWith(
+                      color: AppColors.teal, fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

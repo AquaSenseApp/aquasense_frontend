@@ -15,4 +15,6 @@ class AppRoutes {
   static const sensorDetail   = '/sensor-detail';
   static const aiAdvisory     = '/ai-advisory';   // static advisory (no chat)
   static const aiChat         = '/ai-chat'; 
+    /// Manual reading upload — argument: [SensorModel] with a valid apiKey.
+  static const uploadReading      = '/upload-reading';
 }

@@ -150,6 +150,10 @@ class AiAdvisory {
 /// Full sensor entity stored and managed by the repository.
 class SensorModel {
   final String id;
+  /// Server-assigned integer ID (null for locally-created sensors).
+  final int?    apiId;
+  /// API key returned by POST /api/sensors/register — used for reading uploads.
+  final String? apiKey;
   final String name;
   final String location;
   final ParameterType parameter;
@@ -164,9 +168,11 @@ class SensorModel {
   /// Safe operating range, e.g. "6.5 - 6.8"
   final String safeRange;
   final AlertThreshold? alertThreshold;
- 
+
   const SensorModel({
     required this.id,
+    this.apiId,
+    this.apiKey,
     required this.name,
     required this.location,
     required this.parameter,
@@ -182,9 +188,10 @@ class SensorModel {
     this.alertThreshold,
   });
 
-
   SensorModel copyWith({
     String? id,
+    int?    apiId,
+    String? apiKey,
     String? name,
     String? location,
     ParameterType? parameter,
@@ -198,10 +205,11 @@ class SensorModel {
     RiskSensitivityLevel? sensitivityLevel,
     String? safeRange,
     AlertThreshold? alertThreshold,
-    bool clearAlertThreshold = false,
   }) {
     return SensorModel(
       id:                id               ?? this.id,
+      apiId:             apiId            ?? this.apiId,
+      apiKey:            apiKey           ?? this.apiKey,
       name:              name             ?? this.name,
       location:          location         ?? this.location,
       parameter:         parameter        ?? this.parameter,
@@ -214,15 +222,9 @@ class SensorModel {
       dataSource:        dataSource       ?? this.dataSource,
       sensitivityLevel:  sensitivityLevel ?? this.sensitivityLevel,
       safeRange:         safeRange        ?? this.safeRange,
-      alertThreshold: clearAlertThreshold ? null : (alertThreshold ?? this.alertThreshold),
-  
+      alertThreshold:    alertThreshold   ?? this.alertThreshold,
     );
   }
-}
-
-class Nullable<T> {
-   final T? value;
-   const Nullable(this.value);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../models/sensor_model.dart';
@@ -9,7 +8,7 @@ import '../models/sensor_model.dart';
 /// [sendMessage] appends the user turn then simulates an AI response.
 class ChatProvider extends ChangeNotifier {
   ChatProvider({required SensorModel sensor}) : _sensor = sensor {
-    _seedOpeningMessage(null);
+    _seedOpeningMessage();
   }
 
   final SensorModel    _sensor;
@@ -20,11 +19,10 @@ class ChatProvider extends ChangeNotifier {
   bool              get isTyping  => _isTyping;
 
   /// Seeds the initial assistant greeting when the chat opens.
-  void _seedOpeningMessage(String? userName) {
-    final greeting = userName != null ? 'Hey $userName!' : 'Hello!';
+  void _seedOpeningMessage() {
     _messages.add(ChatMessage(
       id:   'm0',
-      text: '$greeting How may I help you today?',
+      text: 'Hey Meggie! How may I help you today?',
       role: ChatRole.assistant,
     ));
   }

@@ -40,6 +40,15 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.2.3
   intl: ^0.20.2
+  # HTTP client — all API calls go through DioClient
+  dio: ^5.4.0
+  # GPS / location
+  geolocator: ^11.0.0
+  geocoding: ^3.0.0
+  # App-level permissions (camera, GPS) — required for Android < 10 / iOS
+  permission_handler: ^11.3.0
+  # Network connectivity banner
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

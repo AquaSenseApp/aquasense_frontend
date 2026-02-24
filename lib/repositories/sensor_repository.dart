@@ -18,7 +18,7 @@ abstract class SensorRepository {
 class MockSensorRepository implements SensorRepository {
   final List<SensorModel> _sensors = [
     SensorModel(
-      id:        'AQ-PH-203',
+      id:        'AQ-PH-202',
       name:      'pH Sensor Alpha',
       location:  'Amuwo Odofin, Lagos',
       parameter: ParameterType.pH,
@@ -50,7 +50,7 @@ class MockSensorRepository implements SensorRepository {
       location:  'Amuwo Odofin, Lagos',
       parameter: ParameterType.pH,
       riskLevel: RiskLevel.medium,
-      complianceStatus: ComplianceStatus.fail,
+      complianceStatus: ComplianceStatus.pass,
       safeRange:       '6.5 - 8.5',
       alertThreshold:  AlertThreshold.warningLevel,
       latestReading: SensorReading(
@@ -69,7 +69,8 @@ class MockSensorRepository implements SensorRepository {
         impactNotes:
             'Monitor for 30 min; escalate if pH drops below 5.0.',
       ),
-    ),    SensorModel(
+    ),
+    SensorModel(
       id:        'AQ-TUR-145',
       name:      'Turbidity Monitor A',
       location:  'Mowe, Ogun',
@@ -85,7 +86,7 @@ class MockSensorRepository implements SensorRepository {
         timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
       advisory: const AiAdvisory(
-        headline:          'Turbidity within acceptable range.',
+        headline:          'pH is below safe range. Acidic levels detected.',
         impactExplanation: 'High turbidity reduces UV disinfection effectiveness.',
         recommendedActions: [
           'Run coagulation cycle',
@@ -95,7 +96,7 @@ class MockSensorRepository implements SensorRepository {
       ),
     ),
     SensorModel(
-      id:        'AQ-TUR-146',
+      id:        'AQ-TUR-145',
       name:      'Turbidity Monitor B',
       location:  'Berger, Lagos',
       parameter: ParameterType.turbidity,
@@ -109,8 +110,8 @@ class MockSensorRepository implements SensorRepository {
         timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
       advisory: const AiAdvisory(
-        headline:          'Turbidity within acceptable range.',
-        impactExplanation: 'Sensor operating within acceptable parameters.',
+        headline:          'Acidity exceeds safe discharge limits.',
+        impactExplanation: 'Sensor operating within acceptable range.',
         recommendedActions: ['Maintain current treatment protocol'],
         impactNotes: 'No immediate action required.',
       ),

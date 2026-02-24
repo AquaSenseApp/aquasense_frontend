@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/sensor_model.dart';
 import '../../providers/sensor_provider.dart';
 import '../../widgets/common/app_button.dart';
+import '../../services/location_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point
@@ -197,15 +198,10 @@ class _SheetFooter extends StatelessWidget {
     final sensor = await provider.submitSensor();
     if (context.mounted) {
       Navigator.of(context).pop();
-      if (sensor != null) {
-        _showSuccessSheet(context, sensor);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add sensor. Please try again.')),
-        );
-      }
+      if (sensor != null) _showSuccessSheet(context, sensor);
     }
-  }}
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Success bottom sheet
@@ -303,42 +299,171 @@ class _Step1BasicInfo extends StatelessWidget {
 }
 
 /// Step 2 — Location & Source Mapping
-/// Fields: Site/Facility, Specific Location, GPS Coordinates, Data Source Type
-class _Step2Location extends StatelessWidget {
+///
+/// Fields:
+///   • Site/Facility — text input
+///   • Specific Location — text input; auto-filled by the GPS button
+///   • GPS Coordinates — read-only chip, populated via [LocationService]
+///   • Data Source Type — dropdown
+///
+/// The [_GpsButton] calls [LocationService.getCurrentLocation] and writes
+/// both the human-readable address into [form.specificLocation] and the
+/// decimal coordinates into [form.gpsCoordinates].
+class _Step2Location extends StatefulWidget {
   final AddSensorForm form;
   final VoidCallback  onUpdate;
   const _Step2Location({required this.form, required this.onUpdate});
 
   @override
+  State<_Step2Location> createState() => _Step2LocationState();
+}
+
+class _Step2LocationState extends State<_Step2Location> {
+  bool   _gpsLoading = false;
+  String _gpsError   = '';
+
+  /// Calls LocationService then fills form.specificLocation + form.gpsCoordinates.
+  Future<void> _fetchGps() async {
+    setState(() { _gpsLoading = true; _gpsError = ''; });
+    try {
+      final result = await LocationService.instance.getCurrentLocation();
+      widget.form.gpsCoordinates   = result.coordinates;
+      widget.form.specificLocation = result.address;
+      widget.onUpdate();
+    } on LocationException catch (e) {
+      setState(() { _gpsError = e.message; });
+    } catch (_) {
+      setState(() { _gpsError = 'Unable to retrieve location. Try again.'; });
+    } finally {
+      setState(() { _gpsLoading = false; });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tt          = Theme.of(context).textTheme;
+    final hasCoords   = widget.form.gpsCoordinates.isNotEmpty;
+
     return _StepBody(children: [
       _WizardFieldLabel('Site/Facility'),
       _WizardTextField(
-        hint:         'Select Site',
-        initialValue: form.site,
-        onChanged:    (v) { form.site = v; onUpdate(); },
+        hint:         'e.g. Nairobi North Station',
+        initialValue: widget.form.site,
+        onChanged:    (v) { widget.form.site = v; widget.onUpdate(); },
       ),
+
       _WizardFieldLabel('Specific Location'),
       _WizardTextField(
-        hint:         'Enter Location',
-        initialValue: form.specificLocation,
-        onChanged:    (v) { form.specificLocation = v; onUpdate(); },
+        hint:         'Enter or detect via GPS below',
+        initialValue: widget.form.specificLocation,
+        onChanged:    (v) { widget.form.specificLocation = v; widget.onUpdate(); },
       ),
+
+      // ── GPS section ───────────────────────────────────────────────────
       _WizardFieldLabel('GPS Coordinates'),
-      _WizardTextField(
-        hint:         'GPS Coordinates',
-        initialValue: form.gpsCoordinates,
-        onChanged:    (v) { form.gpsCoordinates = v; onUpdate(); },
-      ),
+
+      // Detected coordinates chip (visible once GPS is fetched)
+      if (hasCoords)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color:        AppColors.mintLight,
+            borderRadius: BorderRadius.circular(12),
+            border:       Border.all(color: AppColors.teal),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, color: AppColors.teal, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.form.gpsCoordinates,
+                  style: tt.bodySmall?.copyWith(color: AppColors.teal),
+                ),
+              ),
+              // Allow manual override by tapping × to clear
+              GestureDetector(
+                onTap: () {
+                  widget.form.gpsCoordinates = '';
+                  widget.onUpdate();
+                  setState(() {});
+                },
+                child: const Icon(Icons.close, color: AppColors.teal, size: 16),
+              ),
+            ],
+          ),
+        ),
+
+      // GPS fetch button
+      _GpsButton(isLoading: _gpsLoading, onTap: _fetchGps),
+
+      // Error message
+      if (_gpsError.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            _gpsError,
+            style: tt.bodySmall?.copyWith(color: AppColors.riskHighFg),
+          ),
+        ),
+
       _WizardFieldLabel('Data Source Type'),
       _DropdownField<DataSourceType>(
         hint:      'Select Data Source Type',
-        value:     form.dataSourceType,
+        value:     widget.form.dataSourceType,
         items:     DataSourceType.values,
         labelOf:   (d) => d.label,
-        onChanged: (v) { form.dataSourceType = v; onUpdate(); },
+        onChanged: (v) { widget.form.dataSourceType = v; widget.onUpdate(); },
       ),
     ]);
+  }
+}
+
+/// Teal outlined button that triggers GPS detection.
+/// Shows a [CircularProgressIndicator] while loading.
+class _GpsButton extends StatelessWidget {
+  final bool         isLoading;
+  final VoidCallback onTap;
+  const _GpsButton({required this.isLoading, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color:        AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border:       Border.all(color: AppColors.teal, width: 1.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isLoading)
+              const SizedBox(
+                width:  18,
+                height: 18,
+                child:  CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+                ),
+              )
+            else
+              const Icon(Icons.my_location, color: AppColors.teal, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              isLoading ? 'Detecting location…' : 'Use Current GPS Location',
+              style: tt.bodyMedium?.copyWith(
+                color:      AppColors.teal,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -406,19 +531,15 @@ class _Step5Review extends StatelessWidget {
     return _StepBody(children: [
       _ReviewRow(label: 'Sensor ID',   value: form.sensorId),
       _ReviewRow(label: 'Parameter',   value: form.parameterType?.label ?? '—'),
-      _ReviewRow(
-        label: 'Location',
-        value: [form.specificLocation, form.site]
-            .where((s) => s.isNotEmpty)
-            .join(', '),
-      ),
+      _ReviewRow(label: 'Location',    value: '${form.specificLocation}, ${form.site}'),
       _ReviewRow(label: 'Safe Range',  value: form.safeRange.isNotEmpty ? form.safeRange : '—'),
       _ReviewRow(label: 'Thresholds',  value: form.alertThreshold?.label ?? '—'),
       _AiAdvisoryToggle(
         value:     form.aiAdvisoryEnabled,
         onChanged: null, // read-only on review
       ),
-    ]);  }
+    ]);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -531,28 +652,23 @@ class _AiAdvisoryToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-     return Semantics(
-        label: 'Enable AI Advisory',
-        checked: value,
-        enabled: onChanged != null,
-      child:GestureDetector(
-        onTap: onChanged != null ? () => onChanged!(!value) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color:        AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            border:       Border.all(color: AppColors.borderColor),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Enable AI Advisory', style: Theme.of(context).textTheme.bodyLarge),
-              _TealCheckbox(checked: value),
-            ],
-          ),
+    return GestureDetector(
+      onTap: onChanged != null ? () => onChanged!(!value) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color:        AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border:       Border.all(color: AppColors.borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Enable AI Advisory', style: Theme.of(context).textTheme.bodyLarge),
+            _TealCheckbox(checked: value),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
