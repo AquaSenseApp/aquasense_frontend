@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_routes.dart';
@@ -17,8 +18,15 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/sensors/ai_advisory_screen.dart';
 import 'screens/sensors/sensor_detail_screen.dart';
 import 'screens/splash/splash_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() => runApp(const AquaSenseApp());
+void main() async{
+ // 2. Ensure Flutter is ready for async calls before runApp
+  WidgetsFlutterBinding.ensureInitialized();
+ // Pass an empty string '' to initialize all locales or 'en' for English.
+  await initializeDateFormatting('en', null);
+  runApp(const AquaSenseApp());
+}
 
 class AquaSenseApp extends StatelessWidget {
   const AquaSenseApp({super.key});
