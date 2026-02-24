@@ -9,7 +9,7 @@ import '../models/sensor_model.dart';
 /// [sendMessage] appends the user turn then simulates an AI response.
 class ChatProvider extends ChangeNotifier {
   ChatProvider({required SensorModel sensor}) : _sensor = sensor {
-    _seedOpeningMessage();
+    _seedOpeningMessage(null);
   }
 
   final SensorModel    _sensor;

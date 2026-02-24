@@ -51,7 +51,7 @@ class AlertListTile extends StatelessWidget {
                         style: tt.bodySmall?.copyWith(color: _accentColor),
                       ),
                       const SizedBox(height: 4),
-                      Text(_formatTimestamp(alert.timestamp), style: tt.bodySmall),
+                      Text(_formatTimestamp(alert.timestamp, 'en'), style: tt.bodySmall),
                     ],
                   ),
                 ),

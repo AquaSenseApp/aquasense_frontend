@@ -169,15 +169,15 @@ class SensorProvider extends ChangeNotifier {
       notifyListeners();
       return sensor;
     } catch (e, st) {
-      assert(() { debugPrint('loadSensors error: $e\n$st'); return true; }());
+      assert(() { debugPrint('submitSensor error: $e\n$st'); return true; }());
       _addingLoading = false;
       _errorMessage  = 'Failed to add sensor. Please try again.';
       notifyListeners();
       return null;
-}
-   
-  }
-}
+    }
+   } 
+    }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supporting types

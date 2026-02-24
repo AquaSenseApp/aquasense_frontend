@@ -41,12 +41,11 @@ class UserModel {
   };
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-     email:           json['email'] as String? ?? (throw ArgumentError.notNull('email')),
+    email:           json['email'] as String? ?? (throw ArgumentError.notNull('email')),
     name:            json['name']            as String?,
     isEmailVerified: json['isEmailVerified'] as bool? ?? false,
     rememberMe:      json['rememberMe']      as bool? ?? false,
   );
-
   String toJsonString() => jsonEncode(toJson());
 
   factory UserModel.fromJsonString(String source) =>

@@ -297,9 +297,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Generates a random 5-digit numeric OTP.
+  /// Generates a random 6-digit numeric OTP.
   String _generateOtp() {
     final rng = Random.secure();
-    return List.generate(5, (_) => rng.nextInt(10)).join();
+    return List.generate(6, (_) => rng.nextInt(10)).join();
+  }  
   }
-}
