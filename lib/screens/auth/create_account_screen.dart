@@ -173,8 +173,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   AppTextField(
                     hint:       'e.g. JohnDoe99',
                     controller: _usernameController,
-                    onChanged:  (_) { if (!_usernameTouched) setState(() => _usernameTouched = true); },
-                  ),
+                    onChanged:  (_) => setState(() => _usernameTouched = true),                  ),
                   if (_usernameError != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),

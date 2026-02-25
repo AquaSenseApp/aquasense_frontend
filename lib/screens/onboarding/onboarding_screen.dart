@@ -217,47 +217,47 @@ class _LogoLandingPage extends StatelessWidget {
           // ── Main content (centred) ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Brand logo circle
-                const AppLogo(size: 130),
-                const SizedBox(height: 28),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Brand logo circle
+                  const AppLogo(size: 130),
+                  const SizedBox(height: 28),
 
-                // App name
-                const Text(
-                  'AquaSense',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
+                  // App name
+                  const Text(
+                    'AquaSense',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Tagline
-                const Text(
-                  'Transfer your wastewater data into clear insights, risk alerts, and Ai recommendation',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textGrey,
-                    height: 1.6,
+                  // Tagline
+                  const Text(
+                    'Transfer your wastewater data into clear insights, risk alerts, and AI recommendations',                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textGrey,
+                      height: 1.6,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 40),
+                  const SizedBox(height: 40),
 
-                // Primary CTA
-                AppButton(
-                  label: 'Get Started',
-                  onPressed: onGetStarted,
-                ),
-                const SizedBox(height: 20),
+                  // Primary CTA
+                  AppButton(
+                    label: 'Get Started',
+                    onPressed: onGetStarted,
+                  ),
+                  const SizedBox(height: 20),
 
-                // Sign-in link
-                _SignInLink(),
-              ],
+                  // Sign-in link
+                  _SignInLink(),
+                ],
+              ),
             ),
           ),
         ],
@@ -369,28 +369,34 @@ class _SmallDot extends StatelessWidget {
 /// "Already have an account? Sign in" row used on the logo landing page.
 class _SignInLink extends StatelessWidget {
   const _SignInLink();
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+ @override
+Widget build(BuildContext context) {
+  return Text.rich(
+    TextSpan(
+      text: 'Already have an account? ',
+      style: const TextStyle(
+        color: AppColors.textGrey, 
+        fontSize: 14,
+      ),
       children: [
-        const Text(
-          'Already have an account? ',
-          style: TextStyle(color: AppColors.textGrey, fontSize: 14),
-        ),
-        GestureDetector(
-          onTap: () =>
-              Navigator.of(context).pushNamed(AppRoutes.signIn),
-          child: const Text(
-            'Sign in',
-            style: TextStyle(
-              color: AppColors.teal,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.signIn),
+            child: const Text(
+              'Sign in',
+              style: TextStyle(
+                color: AppColors.teal,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
       ],
-    );
-  }
+    ),
+    textAlign: TextAlign.center, // Keeps it centered if it wraps
+  );
 }
+  }

@@ -13,7 +13,7 @@ import 'api_endpoints.dart';
 ///   • Configures timeouts: 15 s connect, 20 s receive.
 class DioClient {
   DioClient._();
-
+// one single connection manager.
   static final DioClient instance = DioClient._();
 
   late final Dio _dio;
@@ -30,7 +30,10 @@ class DioClient {
         headers: {'Content-Type': 'application/json'},
       ),
     );
+    // security guards that stand between your app and the internet.
+    // The auth interceptor must be first to ensure the token is attached before any request is made.
     _dio.interceptors.add(_AuthInterceptor());
+    // error interceptor must be last to catch any errors from previous interceptors or the request itself.
     _dio.interceptors.add(_ErrorInterceptor());
     _initialised = true;
   }
