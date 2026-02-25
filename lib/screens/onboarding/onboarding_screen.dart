@@ -217,47 +217,54 @@ class _LogoLandingPage extends StatelessWidget {
           // ── Main content (centred) ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Brand logo circle
-                  const AppLogo(size: 130),
-                  const SizedBox(height: 28),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Brand logo circle
+                        const AppLogo(size: 130),
+                        const SizedBox(height: 28),
 
-                  // App name
-                  const Text(
-                    'AquaSense',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
+                        // App name
+                        const Text(
+                          'AquaSense',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Tagline
+                        const Text(
+                          'Transfer your wastewater data into clear insights, risk alerts, and AI recommendations',                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textGrey,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+
+                        // Primary CTA
+                        AppButton(
+                          label: 'Get Started',
+                          onPressed: onGetStarted,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Sign-in link
+                        _SignInLink(),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Tagline
-                  const Text(
-                    'Transfer your wastewater data into clear insights, risk alerts, and AI recommendations',                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textGrey,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Primary CTA
-                  AppButton(
-                    label: 'Get Started',
-                    onPressed: onGetStarted,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Sign-in link
-                  _SignInLink(),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -291,17 +298,28 @@ class _BottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // ── Dot indicator ──────────────────────────────────────────
-          SmoothPageIndicator(
-            controller: pageController,
-            // Exclude the last (logo) page from dot count
-            count: totalPages - 1,
-            effect: ExpandingDotsEffect(
-              activeDotColor: AppColors.teal,
-              dotColor: AppColors.borderColor,
-              dotHeight: 8,
-              dotWidth: 8,
-              expansionFactor: 3,
-            ),
+          ListenableBuilder(
+            listenable: pageController,
+            builder: (context, _) {
+              // Only render indicator while on illustration pages (not the final logo page)
+              final currentPage = pageController.page ?? 0.0;
+              if (currentPage < totalPages - 1) {
+                return SmoothPageIndicator(
+                  controller: pageController,
+                  // Exclude the last (logo) page from dot count
+                  count: totalPages - 1,
+                  effect: ExpandingDotsEffect(
+                    activeDotColor: AppColors.teal,
+                    dotColor: AppColors.borderColor,
+                    dotHeight: 8,
+                    dotWidth: 8,
+                    expansionFactor: 3,
+                  ),
+                );
+              }
+              // On final page, render empty space
+              return const SizedBox.expand();
+            },
           ),
 
           // ── Next arrow button ───────────────────────────────────────

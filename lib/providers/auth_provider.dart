@@ -105,6 +105,7 @@ class AuthProvider extends ChangeNotifier {
       // Note: OTP should be generated server-side and sent via email/SMS
       // Client-side OTP generation is only for demo purposes
       _pendingOtp   = _generateOtp();
+      debugPrint('Generated OTP: $_pendingOtp');
 
       final draft = user.copyWith(isEmailVerified: false);
       final prefs = await SharedPreferences.getInstance();

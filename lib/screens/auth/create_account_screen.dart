@@ -57,10 +57,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     final v = _usernameController.text.trim();
     if (v.isEmpty) return 'Username is required';
     if (v.length < 3) return 'Username must be at least 3 characters';
-    if (v.length > 20) return 'Username must be less than 20 characters';
+    if (v.length > 20) return 'Username must be at most 20 characters';
     return null;
   }
-
   String? get _fullNameError {
     if (!_fullNameTouched) return null;
     final v = _fullNameController.text.trim();

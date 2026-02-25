@@ -7,11 +7,15 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   /// Base URL of the AquaSense backend.
-  /// IMPORTANT: Use HTTPS in production for secure communication.
-  /// For local development, you may use http://localhost:5000
-  /// but never deploy with HTTP to production.
-  static const baseUrl = 'https://api.aquasense.com';
-
+  ///
+  /// Resolved at compile time from the `API_BASE_URL` dart-define.
+  /// Pass `--dart-define=API_BASE_URL=http://localhost:5000` for local dev
+  /// or `--dart-define=API_BASE_URL=https://staging.aquasense.com` for staging.
+  /// The production default is always HTTPS.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.aquasense.com',
+  );
   // ── Auth ────────────────────────────────────────────────────────────────
   static const login    = '/api/users/login';
   static const register = '/api/users/register';
