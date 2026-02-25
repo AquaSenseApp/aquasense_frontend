@@ -142,7 +142,7 @@ class _SensorDetailCard extends StatelessWidget {
               const Spacer(),
               RiskBadge(level: sensor.riskLevel),
               const SizedBox(width: 8),
-              const Icon(Icons.edit_outlined, size: 18, color: AppColors.textGrey),
+              // const Icon(Icons.edit_outlined, size: 18, color: AppColors.textGrey),
             ],
           ),
           const SizedBox(height: 8),

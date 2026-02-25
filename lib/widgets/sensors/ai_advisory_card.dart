@@ -100,15 +100,16 @@ class _AdvisoryRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Fixed-width label column — matches design's left-column alignment
-        SizedBox(
-          width: 110,
+        // Flexible label column with minimum width — prevents truncation at large font scales
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 110),
           child: Text(
             label,
+            softWrap: true,
+            overflow: TextOverflow.visible,
             style: tt.bodySmall?.copyWith(
               fontWeight: FontWeight.w700,
               color:      AppColors.textDark,
-         
             ),
           ),
         ),

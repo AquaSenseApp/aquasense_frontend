@@ -29,11 +29,13 @@ class AiChatScreen extends StatelessWidget {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is! SensorModel) {
       // Gracefully handle missing/invalid arguments
-      return const Scaffold(
-        body: Center(child: Text('Invalid sensor data')),
+      return Scaffold(
+        appBar: AppBar(
+          leading: BackButton(),
+        ),
+        body: const Center(child: Text('Invalid sensor data')),
       );
-    }
-    final sensor = args;
+    }    final sensor = args;
 
     return ChangeNotifierProvider(
       create: (_) => ChatProvider(sensor: sensor),

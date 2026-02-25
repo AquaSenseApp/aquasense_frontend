@@ -92,8 +92,10 @@ class _SignInScreenState extends State<SignInScreen> {
     } else if (auth.isAuthenticated) {
       // Existing verified session — go straight home
       Navigator.of(context).pushReplacementNamed(AppRoutes.home);
-    }
-  }
+    } else {
+      // Unexpected state after successful sign-in
+      debugPrint('SignIn: success but unexpected auth state: ${auth.status}');
+    }  }
 
   void _goToForgotPassword() =>
       Navigator.of(context).pushNamed(AppRoutes.forgotPassword);

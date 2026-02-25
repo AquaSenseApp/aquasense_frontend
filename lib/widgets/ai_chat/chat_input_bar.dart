@@ -40,10 +40,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
       padding: EdgeInsets.fromLTRB(
         16, 10, 16,
         // Respect the home-indicator safe area on modern iPhones
-        MediaQuery.of(context).viewInsets.bottom > 0
-            ? MediaQuery.of(context).viewInsets.bottom + 12
-            : MediaQuery.of(context).viewPadding.bottom + 12,
-      ),
+        // Scaffold already accounts for the keyboard when resizeToAvoidBottomInset
+        // is true; only offset by the home-indicator safe area.
+        MediaQuery.of(context).viewPadding.bottom + 12,      ),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border(top: BorderSide(color: AppColors.borderColor)),
