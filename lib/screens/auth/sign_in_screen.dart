@@ -29,6 +29,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _googleLoading = false;
 
   /// Whether the user has touched each field (errors shown only after interaction).
   bool _emailTouched    = false;
@@ -95,16 +96,27 @@ class _SignInScreenState extends State<SignInScreen> {
     } else {
       // Unexpected state after successful sign-in
       debugPrint('SignIn: success but unexpected auth state: ${auth.status}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sign-in succeeded but an unexpected error occurred. Please try again.'),
+          ),
+        );
+      }
     }  }
-
   void _goToForgotPassword() =>
       Navigator.of(context).pushNamed(AppRoutes.forgotPassword);
 
-  void _signInWithGoogle() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Google sign-in coming soon')),
-    );
+/// Triggers Google account picker → authenticates → navigates home.
+  Future<void> _signInWithGoogle() async {
+    setState(() => _googleLoading = true);
+    final auth    = context.read<AuthProvider>();
+    final success = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _googleLoading = false);
+    if (success) Navigator.of(context).pushReplacementNamed(AppRoutes.home);
   }
+
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -202,8 +214,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   // ── Google sign-in ─────────────────────────────────────
                   GoogleSignInButton(
-                    label: 'Sign in with Google',
-                    onTap: _signInWithGoogle,
+                    label:     'Sign in with Google',
+                    onTap:     _signInWithGoogle,
+                    isLoading: _googleLoading,
                   ),
                   const SizedBox(height: 24),
 

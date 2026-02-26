@@ -186,11 +186,11 @@ class _ProfileCard extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                const Icon(
-                  Icons.person_outline,
-                  size:  16,
-                  color: AppColors.textGrey,
-                ),
+                // const Icon(
+                //   Icons.person_outline,
+                //   size:  16,
+                //   color: AppColors.textGrey,
+                // ),
                 const SizedBox(width: 6),
                 Text('Account Settings', style: tt.bodyLarge),
               ],

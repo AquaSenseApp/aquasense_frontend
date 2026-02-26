@@ -93,7 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
 
                           // ── AI banner ───────────────────────────────────
-                          const AiAssistantBanner(),
+                           AiAssistantBanner(
+                                onViewDetails: provider.sensors.isNotEmpty
+                                    ? () => Navigator.pushNamed(context, AppRoutes.aiAdvisory,
+                                          arguments: provider.sensors.first)
+                                    : null,
+                              ),
                           const SizedBox(height: 24),
 
                           // ── Recent Sensors header ───────────────────────

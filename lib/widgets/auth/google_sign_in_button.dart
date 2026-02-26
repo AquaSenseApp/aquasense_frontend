@@ -5,11 +5,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback onTap;
   final String label;
+  final bool isLoading;
 
   const GoogleSignInButton({
     super.key,
     required this.onTap,
     this.label = 'Sign in with Google',
+    this.isLoading = false,
   });
 
   // The official Google "G" path as a raw string
@@ -25,17 +27,32 @@ class GoogleSignInButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: onTap,
+      onPressed: isLoading ? null : onTap,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         side: const BorderSide(color: AppColors.borderColor), // AppColors.borderColor
       ),
-      icon: SvgPicture.string(_googleLogoSvg, height: 24),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-      ),
+      icon: isLoading
+          ? const SizedBox(
+              height: 24,
+              width: 24,
+              child: Padding(
+                padding: EdgeInsets.all(2),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : SvgPicture.string(_googleLogoSvg, height: 24),
+      label: isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(
+              label,
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+            ),
     );
   }
 }

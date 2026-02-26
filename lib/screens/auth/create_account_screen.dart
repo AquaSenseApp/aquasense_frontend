@@ -134,10 +134,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
   }
 
-  void _signUpWithGoogle() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Google sign-up coming soon')),
-    );
+  Future<void> _signUpWithGoogle() async {
+    final auth    = context.read<AuthProvider>();
+    final success = await auth.signInWithGoogle();
+    if (success && mounted) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────

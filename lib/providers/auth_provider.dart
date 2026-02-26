@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:aquasense/services/google_auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/errors/api_exception.dart';
@@ -205,6 +206,51 @@ class AuthProvider extends ChangeNotifier {
     // Note: OTP should be generated server-side and sent via email/SMS
     _pendingOtp = _generateOtp();
     notifyListeners();
+  }
+
+
+  // ── Google sign-in / sign-up ────────────────────────────────────────────
+
+  /// Triggers the Google account picker via [GoogleAuthService].
+  ///
+  /// On success the [UserModel] built from the Google profile is persisted
+  /// to SharedPreferences and status transitions to [AuthStatus.authenticated].
+  /// No OTP is required — Google has already verified the email address.
+  ///
+  /// On cancellation or failure [errorMessage] is set and false is returned.
+   Future<bool> signInWithGoogle() async {
+    _setLoading();
+    try {
+      final result = await GoogleAuthService.instance.signIn();
+      final user   = result.user;
+
+      // Persist session — Google token acts as the bearer credential.
+      // If your backend has POST /api/users/google, call AuthService here
+      // and replace user.token with the AquaSense JWT from the response.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_PrefKeys.token,    user.token ?? '');
+      await prefs.setString(_PrefKeys.userJson, user.toJsonString());
+      await prefs.setBool(_PrefKeys.verified,   true);
+      await prefs.setBool(_PrefKeys.rememberMe, true);
+
+      _user   = user;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } on GoogleSignInException catch (e) {
+      // User cancelled — do not show an error banner, just go back to idle
+      if (e.message.contains('cancelled')) {
+        _status = AuthStatus.initial;
+        _errorMessage = null;
+        notifyListeners();
+      } else {
+        _setError(e.message);
+      }
+      return false;
+    } catch (e) {
+      _setError('Google sign-in failed. Please try again.');
+      return false;
+    }
   }
 
   // ── Sign out ────────────────────────────────────────────────────────────

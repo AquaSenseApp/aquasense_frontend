@@ -9,7 +9,7 @@ import '../../widgets/sensors/ai_advisory_card.dart';
 ///   - Dark background (scaffold uses [AppColors.background])
 ///   - Purple [_AiFabCircle] circle at top-centre (matching the AI FAB colour)
 ///   - Pink chevron back button top-left
-///   - [AiAdvisoryCard] displays structured advisory data///
+///   - [AiAdvisoryCard] displays structured advisory data
 /// Receives a [SensorModel] via route arguments.
 class AiAdvisoryScreen extends StatelessWidget {
   const AiAdvisoryScreen({super.key});
