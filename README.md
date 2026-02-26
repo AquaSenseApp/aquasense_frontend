@@ -8,7 +8,10 @@ AquaSense is a cross-platform Flutter application that helps environmental engin
 
 ## 📸 Screenshots
 
-> _Coming soon — add screenshots to `assets/screenshots/` and reference them here._
+| Screenshot | Description |
+|------------|-------------|
+| ![Home Screen](../assets/images/Screenshot%20.png) | Home dashboard with sensor overview |
+| ![Sensor Detail](../assets/images/Screenshot%202.png) | Sensor detail view with AI advisory |
 
 ---
 
