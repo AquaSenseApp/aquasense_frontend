@@ -140,27 +140,33 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
-                                Icons.search_off,
+                                Icons.sensors_off,
                                 size: 48,
                                 color: AppColors.textGrey,
                               ),
                               const SizedBox(height: 12),
-                              Text('No sensors match your search',
-                                  style: tt.bodyMedium, textAlign: TextAlign.center),
+                              Text(
+                                provider.sensors.isEmpty
+                                    ? 'No sensors added yet'
+                                    : 'No sensors match your search',
+                                style: tt.bodyMedium,
+                                textAlign: TextAlign.center,
+                              ),
                               const SizedBox(height: 16),
-                              TextButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  provider.clearSearch(scope: SensorSearchScope.home);
-                                },
-                                child: Text(
-                                  'Clear search',
-                                  style: tt.bodyMedium?.copyWith(
-                                    color:      AppColors.teal,
-                                    fontWeight: FontWeight.w600,
+                              if (provider.sensors.isNotEmpty)
+                                TextButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    provider.clearSearch(scope: SensorSearchScope.home);
+                                  },
+                                  child: Text(
+                                    'Clear search',
+                                    style: tt.bodyMedium?.copyWith(
+                                      color:      AppColors.teal,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),

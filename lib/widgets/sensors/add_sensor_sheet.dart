@@ -197,8 +197,19 @@ class _SheetFooter extends StatelessWidget {
     // Final step — submit and show success
     final sensor = await provider.submitSensor();
     if (context.mounted) {
-      Navigator.of(context).pop();
-      if (sensor != null) _showSuccessSheet(context, sensor);
+      if (sensor != null) {
+        Navigator.of(context).pop();
+        _showSuccessSheet(context, sensor);
+      } else {
+        // Show error if registration failed
+        final error = provider.registerError ?? 'Failed to register sensor';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

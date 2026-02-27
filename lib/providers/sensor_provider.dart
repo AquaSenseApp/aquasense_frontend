@@ -36,10 +36,12 @@ class SensorProvider extends ChangeNotifier {
   List<SensorModel> _sensors = [];
   LoadState _loadState       = LoadState.initial;
   String?   _errorMessage;
+  String?   _registerError;
 
   List<SensorModel> get sensors      => _sensors;
   LoadState         get loadState    => _loadState;
   String?           get errorMessage => _errorMessage;
+  String?           get registerError => _registerError;
   bool              get isLoading    => _loadState == LoadState.loading;
 
   List<SensorModel> recentSensors({int count = 3}) =>
@@ -129,9 +131,14 @@ class SensorProvider extends ChangeNotifier {
     required String location,
   }) async {
     final userId = _user?.userId;
-    if (userId == null) return null;
+    if (userId == null) {
+      _registerError = 'User not logged in. Please log in again.';
+      notifyListeners();
+      return null;
+    }
 
     _registerLoading = true;
+    _registerError = null;
     notifyListeners();
     try {
       final result = await SensorService.instance.registerSensor(
@@ -166,9 +173,11 @@ class SensorProvider extends ChangeNotifier {
       _sensors = [..._sensors, newSensor];
       _registerLoading = false;
       notifyListeners();
+      // Refresh sensors from server to ensure consistency
+      await loadSensors();
       return newSensor;
     } on ApiException catch (e) {
-      _errorMessage    = e.displayMessage;
+      _registerError    = e.displayMessage;
       _registerLoading = false;
       notifyListeners();
       return null;
