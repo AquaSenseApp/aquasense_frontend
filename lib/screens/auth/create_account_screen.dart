@@ -130,7 +130,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       organizationType: _organizationType,
     );
     if (success && mounted) {
-      Navigator.of(context).pushNamed(AppRoutes.emailVerification);
+      Navigator.of(context).pushNamed(AppRoutes.home);
     }
   }
 
