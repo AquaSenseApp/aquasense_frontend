@@ -14,7 +14,7 @@ class ApiEndpoints {
   /// The production default is always HTTPS.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.aquasense.com',
+    defaultValue: 'https://aquasense-ai-api.onrender.com/',
   );
   // ── Auth ────────────────────────────────────────────────────────────────
   static const login    = '/api/users/login';
