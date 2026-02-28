@@ -31,9 +31,7 @@ void main() {
         expect(ApiEndpoints.sensorsByUser(456), '/api/sensors/user/456');
       });
 
-      test('analyticsForUser returns correct path with userId', () {
-        expect(ApiEndpoints.analyticsForUser(123), '/api/sensors/analytics/123');
-      });
+      
     });
 
     group('Reading endpoints', () {

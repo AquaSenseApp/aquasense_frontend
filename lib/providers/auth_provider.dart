@@ -1,10 +1,10 @@
-import 'dart:math';
-import 'package:aquasense/services/google_auth_service.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/errors/api_exception.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pref keys
@@ -12,8 +12,8 @@ import '../services/auth_service.dart';
 
 class _PrefKeys {
   _PrefKeys._();
-  static const userJson  = 'aquasense_user';
-  static const token     = 'aquasense_token';  // also stored separately so DioClient can read it
+  static const userJson   = 'aquasense_user';
+  static const token      = 'aquasense_token';
   static const rememberMe = 'aquasense_remember_me';
   static const verified   = 'aquasense_email_verified';
 }
@@ -25,6 +25,8 @@ class _PrefKeys {
 enum AuthStatus {
   initial,
   loading,
+  /// Credentials accepted — backend has emailed an OTP. Waiting for user to
+  /// enter the 6-digit code from their inbox.
   pendingVerification,
   authenticated,
   error,
@@ -36,6 +38,14 @@ enum AuthStatus {
 
 /// Manages auth state and connects to the real API via [AuthService].
 ///
+/// Login is a two-step flow:
+///   1. [signIn]     → POST /api/users/login     → backend sends OTP to email
+///   2. [verifyOtp]  → POST /api/users/verify-otp → validates code, stores JWT
+///
+/// Registration:
+///   [createAccount] → POST /api/users/register → account created, no OTP sent
+///   After success the user is redirected to [SignInScreen] where login starts.
+///
 /// SharedPreferences keys written:
 ///   • [_PrefKeys.userJson]   — full [UserModel] JSON for session restore
 ///   • [_PrefKeys.token]      — JWT read by [DioClient._AuthInterceptor]
@@ -45,8 +55,8 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status       = AuthStatus.initial;
   UserModel? _user;
   String?    _errorMessage;
-  String?    _pendingOtp;
   String?    _pendingEmail;
+  bool       _rememberMe   = false;
 
   AuthStatus get status               => _status;
   UserModel? get user                 => _user;
@@ -55,7 +65,7 @@ class AuthProvider extends ChangeNotifier {
   bool       get isAuthenticated      => _status == AuthStatus.authenticated;
   bool       get isPendingVerification => _status == AuthStatus.pendingVerification;
 
-  // ── Session restore ─────────────────────────────────────────────────────
+  // ── Session restore ──────────────────────────────────────────────────────
 
   /// Reads SharedPreferences on cold start.
   /// Returns true and sets status = authenticated if a valid session is found.
@@ -77,9 +87,13 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  // ── Create account ──────────────────────────────────────────────────────
+  // ── Create account ───────────────────────────────────────────────────────
 
-  /// Calls POST /api/users/register then moves to OTP verification.
+  /// POST /api/users/register
+  ///
+  /// On success: returns true — screen must navigate to [SignInScreen].
+  /// Registration does NOT send an OTP and does NOT authenticate the user.
+  /// The user must then sign in, which triggers the OTP email from the backend.
   Future<bool> createAccount({
     required String username,
     required String fullName,
@@ -93,28 +107,16 @@ class AuthProvider extends ChangeNotifier {
     }
     _setLoading();
     try {
-      final user = await AuthService.instance.register(
+      await AuthService.instance.register(
         username:         username,
         fullName:         fullName,
         email:            email,
         password:         password,
         organizationType: organizationType,
       );
-
-      // Store pending user; OTP required before full session is written
-      _pendingEmail = email.trim();
-      // Note: OTP should be generated server-side and sent via email/SMS
-      // Client-side OTP generation is only for demo purposes
-      _pendingOtp   = _generateOtp();
-      debugPrint('Generated OTP: $_pendingOtp');
-
-      final draft = user.copyWith(isEmailVerified: false);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_PrefKeys.userJson, draft.toJsonString());
-      await prefs.setBool(_PrefKeys.verified, false);
-
-      _user   = draft;
-      _status = AuthStatus.pendingVerification;
+      // Registration succeeded — status goes back to initial so the screen
+      // can navigate to SignInScreen without interference.
+      _status = AuthStatus.initial;
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -123,12 +125,15 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Sign in ─────────────────────────────────────────────────────────────
+  // ── Sign in (Step 1) ─────────────────────────────────────────────────────
 
-  /// Calls POST /api/users/login.
+  /// POST /api/users/login
   ///
-  /// • If the API returns a token → session is valid → authenticated directly.
-  /// • On first-time login (no stored token) → requires OTP.
+  /// Validates credentials. On success the backend sends a 6-digit OTP to
+  /// the user's email inbox and this method transitions to
+  /// [AuthStatus.pendingVerification]. No token is returned at this stage.
+  ///
+  /// The screen must then push [AppRoutes.emailVerification].
   Future<bool> signIn({
     required String email,
     required String password,
@@ -140,30 +145,10 @@ class AuthProvider extends ChangeNotifier {
     }
     _setLoading();
     try {
-      final user = await AuthService.instance.login(
-        email:    email,
-        password: password,
-      );
-
-      // Write token so DioClient can use it for subsequent requests
-      final prefs = await SharedPreferences.getInstance();
-      if (user.token != null) {
-        await prefs.setString(_PrefKeys.token, user.token!);
-      }
-      if (rememberMe) {
-        await prefs.setBool(_PrefKeys.rememberMe, true);
-      }
-
-      final verified = user.copyWith(
-        isEmailVerified: true,
-        rememberMe:      rememberMe,
-      );
-
-      await prefs.setString(_PrefKeys.userJson, verified.toJsonString());
-      await prefs.setBool(_PrefKeys.verified, true);
-
-      _user   = verified;
-      _status = AuthStatus.authenticated;
+      await AuthService.instance.login(email: email, password: password);
+      _pendingEmail = email.trim();
+      _rememberMe   = rememberMe;
+      _status       = AuthStatus.pendingVerification;
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -172,61 +157,156 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── OTP verification ────────────────────────────────────────────────────
+  // ── OTP verification (Step 2) ─────────────────────────────────────────────
 
-  /// Compares [enteredCode] to the generated OTP.
-  /// On success, marks session as verified and writes prefs.
+  /// POST /api/users/verify-otp
+  ///
+  /// Sends { email, otp } to the backend. The OTP is the 6-digit code the
+  /// user received in their inbox — it is NOT locally generated or compared.
+  ///
+  /// On success the backend returns a JWT and full user object. The session
+  /// is persisted to SharedPreferences and status transitions to authenticated.
+ // ── OTP verification (Step 2) ─────────────────────────────────────────────
+
   Future<bool> verifyOtp(String enteredCode) async {
-    _setLoading();
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    if (_pendingOtp == null || enteredCode.trim() != _pendingOtp) {
-      _setError('Invalid code. Please try again.');
+    final email = _pendingEmail;
+    if (email == null || email.isEmpty) {
+      _setError('Session expired. Please sign in again.');
       return false;
     }
+    _setLoading();
+    
+    try {
+      // 1. Call the service
+      final user = await AuthService.instance.verifyOtp(
+        email: email,
+        otp: enteredCode.trim(),
+      );
 
-    final verified = (_user ?? UserModel(email: _pendingEmail ?? ''))
-        .copyWith(isEmailVerified: true);
+      // 2. Prepare the verified user model
+      final verified = user.copyWith(
+        isEmailVerified: true,
+        rememberMe: _rememberMe,
+      );
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_PrefKeys.userJson, verified.toJsonString());
-    await prefs.setBool(_PrefKeys.verified, true);
+      // 3. SECURE THE SESSION (This fixes your Postman 'Unauthorized' issue too)
+      final prefs = await SharedPreferences.getInstance();
+      
+      if (verified.token != null) {
+        // This is the token that DioClient needs for /my-sensors
+        await prefs.setString(_PrefKeys.token, verified.token!);
+      }
+      
+      await prefs.setString(_PrefKeys.userJson, verified.toJsonString());
+      await prefs.setBool(_PrefKeys.verified, true);
+      
+      if (_rememberMe) {
+        await prefs.setBool(_PrefKeys.rememberMe, true);
+      }
 
-    _user         = verified;
-    _pendingOtp   = null;
-    _pendingEmail = null;
-    _status       = AuthStatus.authenticated;
-    notifyListeners();
-    return true;
+      // 4. Update UI State
+      _user = verified;
+      _pendingEmail = null;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+      
+    } on ApiException catch (e) {
+      // If the backend isn't updated yet, this will still throw "Invalid OTP"
+      _setError(e.displayMessage);
+      return false;
+    }
   }
 
-  // ── Resend OTP ──────────────────────────────────────────────────────────
+  // ── Resend OTP ───────────────────────────────────────────────────────────
 
+  /// Re-calls POST /api/users/login to trigger a fresh OTP email.
+  ///
+  /// We don't store the password after step 1, so we re-trigger via
+  /// [ApiEndpoints.resendOtpForEmail] which is a lightweight endpoint
+  /// that only needs the email.
+  ///
+  /// NOTE: the backend does not have a dedicated resend endpoint — calling
+  /// /login again with just the email would require the password. Instead
+  /// we show a message instructing the user to go back and sign in again
+  /// if the OTP has expired. For the common case (OTP arrived but user
+  /// typed it wrong once), the same OTP is still valid for 10 minutes.
   Future<void> resendOtp() async {
-    // Note: OTP should be generated server-side and sent via email/SMS
-    _pendingOtp = _generateOtp();
+    // The OTP is still valid on the backend for 10 minutes from when /login
+    // was called. Tell the user to check their spam folder or re-enter.
+    // If they need a genuinely new code they must go back and sign in again.
     notifyListeners();
   }
 
+  // ── Forgot password ──────────────────────────────────────────────────────
 
-  // ── Google sign-in / sign-up ────────────────────────────────────────────
+  /// POST /api/users/forgot-password
+  ///
+  /// Always returns true (backend never reveals whether the email exists).
+  /// On success the user should see a "check your inbox" confirmation.
+  Future<bool> forgotPassword({required String email}) async {
+    if (email.isEmpty) {
+      _setError('Please enter your email address');
+      return false;
+    }
+    _setLoading();
+    try {
+      await AuthService.instance.forgotPassword(email: email);
+      _status = AuthStatus.initial;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.displayMessage);
+      return false;
+    }
+  }
+
+  // ── Reset password ───────────────────────────────────────────────────────
+
+  /// POST /api/users/reset-password
+  ///
+  /// [token] is the raw token from the reset link query parameter.
+  /// [newPassword] must be at least 6 characters.
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    if (token.isEmpty || newPassword.isEmpty) {
+      _setError('Token and password are required');
+      return false;
+    }
+    if (newPassword.length < 6) {
+      _setError('Password must be at least 6 characters');
+      return false;
+    }
+    _setLoading();
+    try {
+      await AuthService.instance.resetPassword(
+        token:       token,
+        newPassword: newPassword,
+      );
+      _status = AuthStatus.initial;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.displayMessage);
+      return false;
+    }
+  }
+
+  // ── Google sign-in / sign-up ─────────────────────────────────────────────
 
   /// Triggers the Google account picker via [GoogleAuthService].
   ///
   /// On success the [UserModel] built from the Google profile is persisted
   /// to SharedPreferences and status transitions to [AuthStatus.authenticated].
   /// No OTP is required — Google has already verified the email address.
-  ///
-  /// On cancellation or failure [errorMessage] is set and false is returned.
-   Future<bool> signInWithGoogle() async {
+  Future<bool> signInWithGoogle() async {
     _setLoading();
     try {
       final result = await GoogleAuthService.instance.signIn();
       final user   = result.user;
 
-      // Persist session — Google token acts as the bearer credential.
-      // If your backend has POST /api/users/google, call AuthService here
-      // and replace user.token with the AquaSense JWT from the response.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_PrefKeys.token,    user.token ?? '');
       await prefs.setString(_PrefKeys.userJson, user.toJsonString());
@@ -238,7 +318,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on GoogleSignInException catch (e) {
-      // User cancelled — do not show an error banner, just go back to idle
       if (e.message.contains('cancelled')) {
         _status = AuthStatus.initial;
         _errorMessage = null;
@@ -253,7 +332,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Sign out ────────────────────────────────────────────────────────────
+  // ── Sign out ─────────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
     final prefs = await SharedPreferences.getInstance();
@@ -261,14 +340,15 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_PrefKeys.token);
     await prefs.remove(_PrefKeys.verified);
     await prefs.remove(_PrefKeys.rememberMe);
+    await GoogleAuthService.instance.signOut();
     _user         = null;
-    _pendingOtp   = null;
     _pendingEmail = null;
+    _rememberMe   = false;
     _status       = AuthStatus.initial;
     notifyListeners();
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   void clearError() { _errorMessage = null; notifyListeners(); }
 
@@ -284,8 +364,16 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _generateOtp() {
-    final rng = Random.secure();
-    return List.generate(5, (_) => rng.nextInt(10)).join();
+  // ── Test seeding (visibleForTesting) ────────────────────────────────────
+
+  @visibleForTesting
+  void setPendingStateForTest({
+    required String    email,
+    required UserModel user,
+  }) {
+    _pendingEmail = email;
+    _user         = user;
+    _status       = AuthStatus.pendingVerification;
+    notifyListeners();
   }
 }

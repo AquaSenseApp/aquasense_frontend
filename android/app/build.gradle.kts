@@ -42,7 +42,8 @@ android {
 }
 configurations.all {
     resolutionStrategy {
-        force("androidx.profileinstaller:profileinstaller:1.4.0")
+        force("androidx.profileinstaller:profileinstaller:1.4.1")
+        force("com.google.protobuf:protobuf-bom:3.24.0")
     }
 }
 

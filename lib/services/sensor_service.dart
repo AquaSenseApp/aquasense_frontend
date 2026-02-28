@@ -45,13 +45,17 @@ class ApiSensorDto {
     required this.userId,
   });
 
-  factory ApiSensorDto.fromJson(Map<String, dynamic> json) => ApiSensorDto(
-    id:       json['id']          as int,
-    name:     (json['sensor_name'] ?? json['name'] ?? '') as String,
-    type:     (json['sensor_type'] ?? json['type'] ?? '') as String,
-    location: (json['location']   ?? '')                  as String,
-    apiKey:   (json['apiKey']     ?? '')                  as String,
-    userId:   (json['UserId']     ?? json['userId'] ?? 0) as int,
+   factory ApiSensorDto.fromJson(Map<String, dynamic> json) => ApiSensorDto(
+    id:       json['id']                                   as int,
+    name:     (json['sensor_name'] ?? json['name'] ?? '')  as String,
+    // The Sensor model has no sensor_type column — Sequelize returns api_key
+    // (snake_case) not apiKey.  We keep sensor_type fallbacks for any route
+    // handler that might add it later.
+    type:     (json['sensor_type'] ?? json['type'] ?? '')  as String,
+    location: (json['location']    ?? '')                  as String,
+    // Sequelize serialises the column as api_key, not apiKey
+    apiKey:   (json['api_key']     ?? json['apiKey'] ?? '') as String,
+    userId:   (json['UserId']      ?? json['userId'] ?? 0) as int,
   );
 
   /// Map the backend sensor_type string to a [ParameterType] enum value.

@@ -129,8 +129,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       password:         _passwordController.text,
       organizationType: _organizationType,
     );
-    if (success && mounted) {
-      Navigator.of(context).pushNamed(AppRoutes.home);
+     if (success && mounted) {
+      // Registration succeeds — backend does NOT send an OTP at this stage.
+      // The user must now sign in. The /login call triggers the OTP email.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created! Sign in to continue.'),
+          backgroundColor: AppColors.teal,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.of(context).pushReplacementNamed(AppRoutes.signIn);
     }
   }
 

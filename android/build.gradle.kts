@@ -14,6 +14,12 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+
+    configurations.all {
+        resolutionStrategy {
+            force("com.google.protobuf:protobuf-bom:3.21.12")
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")

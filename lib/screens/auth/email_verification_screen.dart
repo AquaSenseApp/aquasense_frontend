@@ -24,10 +24,10 @@ class EmailVerificationScreen extends StatefulWidget {
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   /// One controller per OTP digit box — 5 boxes total.
-  final _controllers = List.generate(5, (_) => TextEditingController());
+  final _controllers = List.generate(6, (_) => TextEditingController());
 
   /// Focus nodes used to advance focus automatically after each digit.
-  final _focusNodes = List.generate(5, (_) => FocusNode());
+  final _focusNodes = List.generate(6, (_) => FocusNode());
 
   /// Seconds remaining before "Resend" is allowed again.
   int _secondsLeft = 30;
@@ -73,14 +73,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   // ── OTP helpers ───────────────────────────────────────────────────────────
 
-  /// The full 5-digit code assembled from the controllers.
+  /// The full 6-digit code assembled from the controllers.
   String get _enteredCode =>
       _controllers.map((c) => c.text).join();
 
-  bool get _isComplete => _enteredCode.length == 5;
+  bool get _isComplete => _enteredCode.length == 6;
 
   void _onDigitChanged(int index, String value) {
-    if (value.length == 1 && index < 4) {
+    if (value.length == 1 && index < 6) {
       // Advance to next box
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
@@ -264,7 +264,7 @@ class _DropletLogo extends StatelessWidget {
   }
 }
 
-/// Row of 5 individual single-digit OTP input boxes.
+/// Row of 6 individual single-digit OTP input boxes.
 ///
 /// Each box:
 ///   - White background, rounded border
@@ -331,7 +331,7 @@ class _OtpBoxState extends State<_OtpBox> {
 
   @override
   Widget build(BuildContext context) {
-    final isFocused = widget.focusNode.hasFocus;
+    // final isFocused = widget.focusNode.hasFocus;
     final hasText   = widget.controller.text.isNotEmpty;
 
     return SizedBox(

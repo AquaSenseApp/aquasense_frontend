@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import '../core/errors/api_exception.dart';
 import '../models/sensor_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/sensor_service.dart';
 
@@ -14,15 +17,47 @@ enum SensorSearchScope { home, sensors }
 // SensorProvider
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Central state manager for sensors, search, wizard, and editing.
+// Central state manager for sensors, search, wizard, and editing.
 ///
 /// Fetches from GET /api/sensors/user/{userId} via [SensorService].
 /// Converts [ApiSensorDto] → [SensorModel] with sensible defaults for
 /// fields the backend doesn't yet return (advisory, reading, riskLevel).
 class SensorProvider extends ChangeNotifier {
-  SensorProvider(UserModel? user) : _user = user;
+  SensorProvider(UserModel? user) : _user = user {
+    // Load immediately if the provider is created while already authenticated
+    // (e.g. session restore — updateUser() never fires because userId
+    // doesn't change, so we must trigger the first fetch here).
+    if (user != null) loadSensors();
+  }
 
   UserModel? _user;
+
+  // ── API key cache ────────────────────────────────────────────────────────
+  // The backend never returns api_key in the sensor list (security).
+  // We cache it locally at registration time so reading uploads still work.
+  static const _apiKeyPrefKey = 'aquasense_sensor_api_keys';
+  Map<int, String> _apiKeyCache = {};
+
+  Future<void> _loadApiKeyCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw   = prefs.getString(_apiKeyPrefKey);
+    if (raw == null) return;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      _apiKeyCache  = decoded.map((k, v) => MapEntry(int.parse(k), v as String));
+    } catch (_) {}
+  }
+
+  Future<void> _saveApiKey(int sensorId, String apiKey) async {
+    _apiKeyCache[sensorId] = apiKey;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _apiKeyPrefKey,
+      jsonEncode(_apiKeyCache.map((k, v) => MapEntry(k.toString(), v))),
+    );
+  }
+
+  String? _cachedApiKey(int sensorId) => _apiKeyCache[sensorId];
 
   /// Called by ProxyProvider when auth state changes (login / logout).
   void updateUser(UserModel? user) {
@@ -30,6 +65,8 @@ class SensorProvider extends ChangeNotifier {
     _user = user;
     if (user != null) loadSensors();
   }
+
+
 
   // ── Sensor list ───────────────────────────────────────────────────────────
 
@@ -56,6 +93,7 @@ class SensorProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
+      await _loadApiKeyCache();          // ensure cache is ready before merge
       final dtos = await SensorService.instance.getSensorsForUser(userId);
       _sensors   = dtos.map(_dtoToModel).toList();
       _loadState = LoadState.loaded;
@@ -67,14 +105,21 @@ class SensorProvider extends ChangeNotifier {
   }
 
   /// Converts an API DTO to the rich UI [SensorModel].
+   /// Converts an API DTO to the rich UI [SensorModel].
+  ///
+  /// The Sensor table has no sensor_type column so [ApiSensorDto.type] is
+  /// always empty.  We infer [ParameterType] from the sensor name instead
+  /// (the same substring logic used in [_typeToParam]).
   SensorModel _dtoToModel(ApiSensorDto dto) {
+    // Infer from name since sensor_type column doesn't exist in the schema
+    final param = _typeToParam(dto.name);
     return SensorModel(
       id:     dto.id.toString(),
       apiId:  dto.id,
       apiKey: dto.apiKey,
       name:   dto.name,
       location: dto.location,
-      parameter: dto.parameterType,
+      parameter: param,
       riskLevel: RiskLevel.medium, // default until analytics returns data
       latestReading: SensorReading(
         value:     0,
@@ -131,8 +176,10 @@ class SensorProvider extends ChangeNotifier {
     required String location,
   }) async {
     final userId = _user?.userId;
-    if (userId == null) {
-      _registerError = 'User not logged in. Please log in again.';
+    final email = _user?.email;
+    
+    if (userId == null && email == null) {
+      _registerError = 'User session invalid. Please log out and log in again.';
       notifyListeners();
       return null;
     }
@@ -145,9 +192,9 @@ class SensorProvider extends ChangeNotifier {
         sensorName: sensorName,
         sensorType: sensorType,
         location:   location,
-        userId:     userId,
+        userId:     userId ?? 0, // Use userId or 0 as fallback
       );
-
+     await _saveApiKey(result.sensorId, result.apiKey);
       final newSensor = SensorModel(
         id:       result.sensorId.toString(),
         apiId:    result.sensorId,
@@ -273,6 +320,7 @@ class SensorProvider extends ChangeNotifier {
     return sensor;
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EditSensorForm

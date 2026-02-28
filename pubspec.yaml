@@ -49,7 +49,7 @@ dependencies:
   # App-level permissions (camera, GPS) — required for Android < 10 / iOS
   permission_handler: ^12.0.1
   # Network connectivity banner
-  connectivity_plus: ^7.0.0
+  # connectivity_plus: ^7.0.0  # Temporarily disabled due to Gradle dependency conflict
    # Google Sign-In
   google_sign_in: ^6.2.1
 

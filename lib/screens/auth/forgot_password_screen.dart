@@ -43,20 +43,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!_canSubmit) return;
     setState(() => _isLoading = true);
 
-    // Simulate API call — replace with real reset logic
-    await Future.delayed(const Duration(seconds: 2));
+    final auth = context.read<AuthProvider>();
+    final success = await auth.forgotPassword(
+      email: _emailController.text.trim(),
+    );
 
-    if (mounted) {
-      setState(() { _isLoading = false; _sent = true; });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password reset link sent to ${_emailController.text.trim()}',
-          ),
-          backgroundColor: AppColors.teal,
-        ),
-      );
-    }
+    if (!mounted) return;
+    setState(() { _isLoading = false; _sent = success; });
+
+    // Show confirmation regardless of outcome — backend always returns 200
+    // so we never reveal whether the email exists (security by design).
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('If that email is registered, a reset link has been sent.'),
+        backgroundColor: AppColors.teal,
+        duration: Duration(seconds: 4),
+      ),
+    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
